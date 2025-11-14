@@ -61,48 +61,9 @@ new [--dev] [--git] [--branch BRANCH] [--github [GITHUB]] [--organization ORGANI
 WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
 WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
 [+] Pulling 5/5
- ✔ redis Pulled                                                                                                    3.0s
- ✔ selenium Pulled                                                                                                 3.0s
- ✔ meilisearch Pulled                                                                                              2.9s
- ✔ mailpit Pulled                                                                                                  3.0s
- ✔ mysql Pulled                                                                                                    3.0s
-WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
-WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
 [+] Building 839.7s (21/21) FINISHED
- => [internal] load local bake definitions                                                                                    0.0s
- => => reading from stdin 493B                                                                                                0.0s
- => [internal] load build definition from Dockerfile                                                                          0.0s
- => => transferring dockerfile: 3.71kB                                                                                        0.0s
- => [internal] load metadata for docker.io/library/ubuntu:24.04                                                               2.1s
- => [internal] load .dockerignore                                                                                             0.1s
- => => transferring context: 2B                                                                                               0.0s
- => [ 1/14] FROM docker.io/library/ubuntu:24.04@sha256:66460d557b25769b102175144d538d88219c077c678a49af4afca6fbfc1b5252       0.0s
- => [internal] load build context                                                                                             0.1s
- => => transferring context: 99B                                                                                              0.0s
- => CACHED [ 2/14] WORKDIR /var/www/html                                                                                      0.0s
- => CACHED [ 3/14] RUN ln -snf /usr/share/zoneinfo/UTC /etc/localtime && echo UTC > /etc/timezone                             0.0s
- => CACHED [ 4/14] RUN echo "Acquire::http::Pipeline-Depth 0;" > /etc/apt/apt.conf.d/99custom &&     echo "Acquire::http::No  0.0s
- => [ 5/14] RUN apt-get update && apt-get upgrade -y     && mkdir -p /etc/apt/keyrings     && apt-get install -y gnupg gos  804.7s
- => [ 6/14] RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.4                                                             0.5s
- => [ 7/14] RUN userdel -r ubuntu                                                                                             1.0s
- => [ 8/14] RUN groupadd --force -g 1001 sail                                                                                 0.6s
- => [ 9/14] RUN useradd -ms /bin/bash --no-user-group -g 1001 -u 1337 sail                                                    0.7s
- => [10/14] RUN git config --global --add safe.directory /var/www/html                                                        0.5s
- => [11/14] COPY start-container /usr/local/bin/start-container                                                               0.2s
- => [12/14] COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf                                                     0.1s
- => [13/14] COPY php.ini /etc/php/8.4/cli/conf.d/99-sail.ini                                                                  0.2s
- => [14/14] RUN chmod +x /usr/local/bin/start-container                                                                       0.0s
- => exporting to image                                                                                                       27.3s
- => => exporting layers                                                                                                      27.2s
- => => writing image sha256:91e56947d48146f32847ed210f29b66597942fdea00a94185e1393f7b02a0a17                                  0.0s
- => => naming to sail-8.4/app                                                                                                 0.0s
- => resolving provenance for metadata file                                                                                    0.0s
 [+] Building 1/1
  ✔ laravel.test  Built                                                                                                        0.0s
-
-Please provide your password so we can make some final adjustments to your application's permissions.
-
-[sudo] password for wida:
 
 Thank you! We hope you build something incredible. Dive in with: cd laravel-rds-temp && ./vendor/bin/sail up
 ```
@@ -113,21 +74,113 @@ git push origin main
 
 ```bash
 wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail up -d
-WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
-WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
-[+] Running 6/6
- ✔ Container laravel-rds-meilisearch-1   Running                                                                              0.0s
- ✔ Container laravel-rds-mailpit-1       Running                                                                              0.0s
- ✔ Container laravel-rds-redis-1         Running                                                                              0.0s
- ✔ Container laravel-rds-selenium-1      Running                                                                              0.0s
- ✔ Container laravel-rds-mysql-1         Started                                                                              0.4s
- ✔ Container laravel-rds-laravel.test-1  Started                                                                              0.5s
-wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ docker ps
-CONTAINER ID   IMAGE                          COMMAND                  CREATED         STATUS                            PORTS                                                                                                NAMES
-a9ae08ca2027   sail-8.4/app                   "start-container"        5 minutes ago   Up 8 seconds                      0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:5173->5173/tcp, [::]:5173->5173/tcp                     laravel-rds-laravel.test-1
-a31d8367e0c0   mysql/mysql-server:8.0         "/entrypoint.sh mysq…"   5 minutes ago   Up 8 seconds (health: starting)   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060-33061/tcp                                         laravel-rds-mysql-1
-001cf9f673d7   selenium/standalone-chromium   "/opt/bin/entry_poin…"   5 minutes ago   Up 5 minutes                      4444/tcp, 5900/tcp, 9000/tcp                                                                         laravel-rds-selenium-1
-d8c98e675d07   redis:alpine                   "docker-entrypoint.s…"   5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp                                                          laravel-rds-redis-1
-29bddfe790ae   axllent/mailpit:latest         "/mailpit"               5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:1025->1025/tcp, [::]:1025->1025/tcp, 0.0.0.0:8025->8025/tcp, [::]:8025->8025/tcp, 1110/tcp   laravel-rds-mailpit-1
-45ed6632190f   getmeili/meilisearch:latest    "tini -- /bin/sh -c …"   5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:7700->7700/tcp, [::]:7700->7700/tcp
 ```
+
+### コンテナ起動してlocalhostにアクセスで下記エラー（1部）
+```
+The stream or file "/var/www/html/storage/logs/laravel.log" could not be opened in append mode: Failed to open stream: Permission denied The exception occurred while attempting to log
+```
+```
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ls -la
+total 412
+drwxr-xr-x  5 wida wida   4096 Nov  5 00:00 storage
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ docker compose exec laravel.test bash
+root@0eeea93d3466:/var/www/html# chmod -R 777 storage bootstrap/cache
+root@0eeea93d3466:/var/www/html# exit
+exit
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ls -la
+total 412
+drwxrwxrwx  5 wida wida   4096 Nov  5 00:00 storage
+
+```
+
+
+### コンテナ起動してhttp://localhostにアクセスすると下記のエラー
+```
+SQLSTATE[42S02]: Base table or view not found: 1146 Table 'laravel.sessions' doesn't exist
+```
+
+原因はセッションテーブルがない存在しない
+対応は2通り
+1. セッションテーブルの作成
+デフォルトでセッションテーブル用のmigrationファイルがあるので下記でOK
+```php
+./vendor/bin/sail artisan migrate
+もしくは
+docker compose exec laravel.test php artisan migrate
+```
+2. セッションの保存方法fileに変更する
+.env
+```
+# SESSION_DRIVER=database
+SESSION_DRIVER=file
+```
+
+### postsテーブルマイグレーションファイル作成
+
+```bash
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ docker exec laravel-rds-laravel.test-1 php artisan make:migration create_posts_table
+
+   INFO  Migration [database/migrations/2025_11_14_095149_create_posts_table.php] created successfully.
+```
+
+作成されたファイルをVSCodeで編集しようとしたら下記
+```
+'2025_11_14_095149_create_posts_table.php' の保存に失敗しました。
+十分な権限がありません。
+[管理者権限で再試行] を選択して管理者として再試行してください。
+```
+```bash
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ sudo chown wida:wida database/migrations/2025_11_14_095149_create_posts_table.php
+```
+
+で所有者を変更
+
+マイグレーションファイル作成コマンドをSailコマンドですれば、WWWUSERになるらしいので、
+次回からは`docker exec ... php artisan`は使用せず、
+`./vendor/bin/sail artisan`を使用
+
+#### マイグレーション実行
+
+```bash
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail artisan migrate
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+
+   INFO  Running migrations.
+
+  2025_11_14_095149_create_posts_table .......................................................................................... 48.53ms DONE
+```
+
+### posts Modelとコントローラー作成
+
+```bash
+./vendor/bin/sail artisan make:model Post
+./vendor/bin/sail artisan make:controller PostController --api
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+
+   INFO  Model [app/Models/Post.php] created successfully.
+
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+
+   INFO  Controller [app/Http/Controllers/PostController.php] created successfully.
+```
+
+#### --api オプション
+
+API用のコントローラーを作成
+下記の一般と違いcreate()とedit()がない
+APIはフォーム画面が不要なため
+
+```
+index()    // 一覧表示
+create()   // 作成フォーム表示
+store()    // 保存
+show()     // 詳細表示
+edit()     // 編集フォーム表示
+update()   // 更新
+destroy()  // 削除
+```
+
