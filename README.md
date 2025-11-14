@@ -184,3 +184,55 @@ update()   // 更新
 destroy()  // 削除
 ```
 
+Laravel 11から api.php はデフォルトで作成されなくなりました。
+API ルートをインストール
+
+```bash
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail artisan install:api
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+./composer.json has been updated
+Running composer update laravel/sanctum
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - laravel/framework is locked to version v12.37.0 and an update of this package was not requested.
+    - laravel/framework v12.37.0 requires symfony/http-foundation ^7.2.0 -> found symfony/http-foundation[v7.2.0, ..., v7.3.7] but these were not loaded, because they are affected by security advisories. To ignore the advisories, add ("PKSA-365x-2zjk-pt47") to the audit "ignore" config. To turn the feature off entirely, you can set "block-insecure" to false in your "audit" config.
+  Problem 2
+    - laravel/sail is locked to version v1.47.0 and an update of this package was not requested.
+    - laravel/framework v12.37.0 requires symfony/http-foundation ^7.2.0 -> found symfony/http-foundation[v7.2.0, ..., v7.3.7] but these were not loaded, because they are affected by security advisories. To ignore the advisories, add ("PKSA-365x-2zjk-pt47") to the audit "ignore" config. To turn the feature off entirely, you can set "block-insecure" to false in your "audit" config.
+    - laravel/sail v1.47.0 requires illuminate/console ^9.52.16|^10.0|^11.0|^12.0 -> satisfiable by laravel/framework[v12.37.0].
+
+
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+
+   INFO  Published API routes file.
+
+ One new database migration has been published. Would you like to run all pending database migrations? (yes/no) [yes]:
+ > yes
+
+   INFO  Nothing to migrate.
+
+   INFO  API scaffolding installed. Please add the [Laravel\Sanctum\HasApiTokens] trait to your User model.
+```
+
+ルートが登録されているか確認
+
+```bash
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail artisan route:list --path=api
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+
+  GET|HEAD        api/posts ............................................................................... posts.index › PostController@index
+  POST            api/posts ............................................................................... posts.store › PostController@store
+  GET|HEAD        api/posts/{post} .......................................................................... posts.show › PostController@show
+  PUT|PATCH       api/posts/{post} ...................................................................... posts.update › PostController@update
+  DELETE          api/posts/{post} .................................................................... posts.destroy › PostController@destroy
+  GET|HEAD        api/user ...................................................................................................................
+
+                                                                                                                            Showing [6] routes
+
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$
+```

@@ -2,47 +2,41 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Post;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // 一覧取得
     public function index()
     {
-        //
+        return Post::all();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // 作成
     public function store(Request $request)
     {
-        //
+        $post = Post::create($request->all());
+        return response()->json($post, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    // 詳細取得
+    public function show(Post $post)
     {
-        //
+        return $post;
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    // 更新
+    public function update(Request $request, Post $post)
     {
-        //
+        $post->update($request->all());
+        return response()->json($post);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    // 削除
+    public function destroy(Post $post)
     {
-        //
+        $post->delete();
+        return response()->json(null, 204);
     }
 }
