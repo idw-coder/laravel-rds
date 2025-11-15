@@ -236,3 +236,89 @@ WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank 
 
 wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$
 ```
+
+### 認証
+
+Sanctum のインストール、Sanctum の設定ファイル公開
+
+```bash
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ composer require laravel/sanctum
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+```
+
+#### 各種ファイル設定
+
+- .env
+
+```
+# CORS設定
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+CORS_ALLOWED_METHODS=*
+CORS_ALLOWED_HEADERS=*
+CORS_SUPPORTS_CREDENTIALS=true
+
+# Sanctum の API トークン方式を有効
+SANCTUM_STATEFUL_DOMAINS=localhost:5173
+SESSION_DOMAIN=localhost
+```
+
+- bootstrap\app.phpにミドルウェアを有効化するよう追記
+
+- app\Models\User.phpにトークンが発行できるユーザーとなるよう修正
+
+- AuthControllerを作成
+
+```bash
+./vendor/bin/sail artisan make:controller AuthController
+```
+
+- Sanctumマイグレーションを実行
+```
+./vendor/bin/sail artisan migrate
+```
+
+- ユーザーの登録
+```
+php artisan tinker
+  User::create([...])
+``` 
+
+#### 認証フロー、要確認
+
+```mermaid
+sequenceDiagram
+    participant V as Vue(フロント)
+    participant A as API(Laravel)
+    participant S as Sanctum(HasApiTokens)
+    participant DB as MySQL
+
+    %% --- ログイン ---
+    V->>A: POST /api/login (email, password)
+
+    A->>DB: users から User検索
+    DB-->>A: Userデータ
+
+    A->>A: パスワード検証 (Hash::check)
+
+    A->>S: createToken() 呼び出し
+    S->>S: プレーンテキストトークン生成<br>（ハッシュを作成）
+    S->>DB: personal_access_tokens に<br>トークンのハッシュ保存
+    DB-->>S: 保存成功
+
+    S-->>A: プレーンテキストトークン返却
+    A-->>V: { token, user }
+
+    Note over V: トークンを localStorage などに保存
+
+
+    %% --- 認証が必要な API 呼び出し ---
+    V->>A: Bearer token を付与してAPIアクセス
+
+    A->>S: トークン文字列をハッシュ化
+    S->>DB: personal_access_tokens で<br>ハッシュ一致するトークンを検索
+    DB-->>S: 一致する token レコード返却
+
+    S-->>A: トークンは有効 = 認証成功
+    A-->>V: レスポンス返却
+
+```
