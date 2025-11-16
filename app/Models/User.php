@@ -3,12 +3,20 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Laravel\Sanctum\HasApiTokens; // SanctumのAPIトークン機能を有効化
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    /**
+     * SanctumのAPIトークン機能と通知機能を有効化
+     * HasApiTokens: APIトークンの生成・管理機能を提供（Sanctum）
+     * Notifiable: 通知機能を提供（メール通知など）
+     */
+    use HasApiTokens, Notifiable;
+
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
