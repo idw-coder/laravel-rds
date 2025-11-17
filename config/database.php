@@ -60,6 +60,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => 5, // ← 追加（5秒でタイムアウト）ログイン画面でずっと待たされるのを防止→DB接続のエラーと切り分けれる
             ]) : [],
         ],
 

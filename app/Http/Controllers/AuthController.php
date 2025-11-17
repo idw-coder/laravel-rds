@@ -16,11 +16,23 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // 認証トライ
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        /**
+         * attempt(credentials): 認証情報を指定して認証を試行
+         * only('email', 'password'): メールアドレスとパスワードを指定
+         * 
+         * 認証に失敗した場合は401 Unauthorizedを返却
+         */
+        try {
+            if (!Auth::attempt($request->only('email', 'password'))) {
+                return response()->json([
+                    'message' => 'ログイン情報が正しくありません。',
+                ], 401);
+            }
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'ログイン情報が正しくありません。',
-            ], 401);
+                'message' => 'エラーが発生しました。',
+                'error' => $e->getMessage(),
+            ], 500);
         }
 
         // 認証済みユーザー取得
