@@ -322,3 +322,59 @@ sequenceDiagram
     A-->>V: レスポンス返却
 
 ```
+
+### CI/CD 設定
+
+Settings → Secrets and variables → Actions
+以下の Secrets を追加：
+
+| Name | Value |
+|------|-------|
+| SSH_PRIVATE_KEY | Lightsailで作成したもの |
+| SSH_HOST | 54.178.81.51 |
+| SSH_USER | ubuntu |
+
+.github/workflows/deploy.ymlを作成
+
+```mermaid
+graph TB
+    subgraph "開発環境（ローカル）"
+        DevVue[Vue.js<br/>localhost:5173]
+        DevLaravel[Laravel<br/>Docker Sail<br/>localhost:80]
+        DevMySQL[MySQL<br/>Docker]
+        
+        DevVue -->|API Request| DevLaravel
+        DevLaravel -->|DB接続| DevMySQL
+    end
+    
+    subgraph "本番環境（AWS）"
+        ProdVue[Vue.js<br/>54.178.81.51:8080<br/>Nginx]
+        ProdLaravel[Laravel<br/>54.178.81.51:80<br/>Lightsail + Nginx]
+        ProdMySQL[MySQL 5.7<br/>RDS]
+        
+        ProdVue -->|API Request| ProdLaravel
+        ProdLaravel -->|DB接続| ProdMySQL
+    end
+    
+    subgraph "CI/CD（GitHub Actions）"
+        VueRepo[Vue Repository<br/>laravel-rds-vue]
+        LaravelRepo[Laravel Repository<br/>laravel-rds]
+        
+        VueRepo -->|1. npm run build| VueBuild[ビルド]
+        VueBuild -->|2. scp| ProdVue
+        
+        LaravelRepo -->|1. SSH接続| LaravelDeploy[git pull<br/>composer install<br/>キャッシュクリア]
+        LaravelDeploy -->|2. 更新| ProdLaravel
+    end
+    
+    Dev[開発者] -->|git push| VueRepo
+    Dev -->|git push| LaravelRepo
+    Dev -->|ローカル開発| DevVue
+
+    style DevVue fill:#42b883
+    style DevLaravel fill:#ff2d20
+    style DevMySQL fill:#4479a1
+    style ProdVue fill:#42b883
+    style ProdLaravel fill:#ff2d20
+    style ProdMySQL fill:#4479a1
+```
