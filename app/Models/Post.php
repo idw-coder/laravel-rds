@@ -16,8 +16,22 @@ class Post extends Model
     // Post::create(['title' => '...']) のように配列で一度に保存できる
     // セキュリティ対策: ここに指定したカラムのみ一括代入可能
     protected $fillable = [
+        'user_id',
         'title',
         'content',
         'status',
     ];
+
+    /**
+     * この投稿の所有者（ユーザー）を取得
+     * 
+     * PostモデルとUserモデルの多対1のリレーションシップを定義
+     * 1つの投稿は1人のユーザーに属する
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
