@@ -392,6 +392,9 @@ Google 認証用のコントローラーを作成
 ./vendor/bin/sail artisan make:controller Api/GoogleAuthController
 ```
 
+その他関連ファイルを修正
+
+
 ```mermaid
 %% 認証システム全体のフロー図
 

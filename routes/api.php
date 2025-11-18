@@ -6,8 +6,13 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
 
+// テスト用ルート
+Route::get('/test', function () {
+    return response()->json(['message' => 'API is working']);
+});
+
 // ログインは認証不要
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 // Google OAuth（認証不要）
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
