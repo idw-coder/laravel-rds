@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
+use App\Http\Controllers\UserController;
 
 // テスト用ルート
 Route::get('/test', function () {
@@ -25,6 +26,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/profile', [UserController::class, 'show']);
+    Route::put('/profile', [UserController::class, 'update']);
     
     Route::apiResource('posts', PostController::class);
 });
