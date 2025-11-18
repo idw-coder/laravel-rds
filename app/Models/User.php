@@ -54,4 +54,17 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * このユーザーが作成した投稿を取得
+     * 
+     * UserモデルとPostモデルの1対多のリレーションシップを定義
+     * 1人のユーザーは複数の投稿を持つことができる
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function posts()
+    {
+        return $this->hasMany(Post::class);
+    }
 }

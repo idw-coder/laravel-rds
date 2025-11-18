@@ -348,7 +348,7 @@ graph TB
     end
     
     subgraph "本番環境（AWS）"
-        ProdVue[Vue.js<br/>54.178.81.51:8080<br/>Nginx]
+        ProdVue[Vue.js<br/>54.178.81.51:8080<br/>Lightsail + Nginx]
         ProdLaravel[Laravel<br/>54.178.81.51:80<br/>Lightsail + Nginx]
         ProdMySQL[MySQL 5.7<br/>RDS]
         
