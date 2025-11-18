@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google OAuth
+    |--------------------------------------------------------------------------
+    |
+    | Google OAuth認証に必要な設定です。
+    | Google Cloud Consoleで作成したOAuth 2.0クライアントIDとシークレットを設定します。
+    | リダイレクトURIは認証成功後のコールバック先URLを指定します。
+    |
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
 ];

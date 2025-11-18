@@ -11,14 +11,14 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /**
-     * SanctumのAPIトークン機能と通知機能を有効化
+     * トレイトの有効化
      * HasApiTokens: APIトークンの生成・管理機能を提供（Sanctum）
+     * HasFactory: モデルファクトリー機能を提供
      * Notifiable: 通知機能を提供（メール通知など）
+     * 
+     * @use HasFactory<\Database\Factories\UserFactory>
      */
-    use HasApiTokens, Notifiable;
-
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -29,6 +29,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'google_id', // Google OAuthのID
     ];
 
     /**

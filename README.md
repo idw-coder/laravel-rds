@@ -378,3 +378,84 @@ graph TB
     style ProdLaravel fill:#ff2d20
     style ProdMySQL fill:#4479a1
 ```
+
+### Google OAuth
+
+Users テーブルにマイグレーションを作成
+
+```bash
+./vendor/bin/sail artisan make:migration add_google_fields_to_users_table
+```
+
+Google 認証用のコントローラーを作成
+```bash
+./vendor/bin/sail artisan make:controller Api/GoogleAuthController
+```
+
+その他関連ファイルを修正
+
+
+```mermaid
+%% 認証システム全体のフロー図
+
+graph TB
+    Start[ユーザーがログイン画面にアクセス]
+    
+    Start --> Choice{ログイン方法を選択}
+    
+    %% メール・パスワードログインフロー
+    Choice -->|メール・パスワード| EmailInput[メールアドレス<br/>パスワード入力]
+    EmailInput --> EmailSubmit[POST /api/login]
+    EmailSubmit --> CheckUser{users テーブルで<br/>ユーザー検索}
+    CheckUser -->|見つからない| EmailError1[エラー: ユーザーが<br/>存在しません]
+    CheckUser -->|見つかった| CheckPassword{password が<br/>NULL か？}
+    CheckPassword -->|NULL| EmailError2[エラー: Google で<br/>ログインしてください]
+    CheckPassword -->|あり| ValidatePassword{パスワードが<br/>一致するか？}
+    ValidatePassword -->|不一致| EmailError3[エラー: パスワードが<br/>間違っています]
+    ValidatePassword -->|一致| IssueToken1[トークン発行]
+    
+    %% Google OAuthログインフロー
+    Choice -->|Google でログイン| GoogleButton[Google ボタンクリック]
+    GoogleButton --> GetAuthUrl[GET /api/auth/google]
+    GetAuthUrl --> GooglePopup[Google 認証画面<br/>ポップアップ表示]
+    GooglePopup --> UserAuth[ユーザーが Google で<br/>ログイン許可]
+    UserAuth --> GoogleCallback[GET /api/auth/google/callback]
+    GoogleCallback --> GetGoogleUser[Google から<br/>ユーザー情報取得<br/>- Google ID<br/>- 名前<br/>- メールアドレス<br/>- プロフィール画像]
+    GetGoogleUser --> SearchUser{users テーブルで<br/>google_id または<br/>email で検索}
+    
+    SearchUser -->|google_id で見つかった| IssueToken2[トークン発行]
+    SearchUser -->|email で見つかった| UpdateGoogleId[既存ユーザーに<br/>google_id を追加]
+    UpdateGoogleId --> IssueToken2
+    SearchUser -->|見つからない| CreateUser[新規ユーザー作成<br/>- name: Google の名前<br/>- email: Google のメール<br/>- google_id: Google ID<br/>- avatar: プロフィール画像<br/>- password: NULL]
+    CreateUser --> IssueToken2
+    
+    %% トークン発行後の共通フロー
+    IssueToken1 --> ReturnToken[トークン + ユーザー情報<br/>を JSON で返却]
+    IssueToken2 --> ReturnToken
+    
+    ReturnToken --> SaveToken[Vue が localStorage に保存<br/>- token<br/>- user]
+    SaveToken --> Redirect[投稿一覧画面へ<br/>リダイレクト]
+    
+    %% 認証済みリクエスト
+    Redirect --> AuthRequest[以降の API リクエスト]
+    AuthRequest --> SendToken[Authorization ヘッダーに<br/>Bearer トークンを付与]
+    SendToken --> VerifyToken[Laravel Sanctum が<br/>トークン検証]
+    VerifyToken --> Success[API レスポンス返却]
+    
+    %% エラーハンドリング
+    EmailError1 --> Start
+    EmailError2 --> Start
+    EmailError3 --> Start
+    
+    style Start fill:#e1f5ff
+    style Choice fill:#fff4e1
+    style IssueToken1 fill:#d4edda
+    style IssueToken2 fill:#d4edda
+    style ReturnToken fill:#d4edda
+    style Success fill:#d4edda
+    style EmailError1 fill:#f8d7da
+    style EmailError2 fill:#f8d7da
+    style EmailError3 fill:#f8d7da
+    style CreateUser fill:#fff3cd
+    style UpdateGoogleId fill:#fff3cd
+```

@@ -19,9 +19,18 @@ class AuthController extends Controller
                 'password' => 'required',
             ]);
 
+            // ユーザーを検索
+            $user = User::where('email', $request->email)->first();
+
+            // Googleログインの場合
+            if ($user && !$user->password) {
+                return response()->json([
+                    'message' => 'このアカウントは Google でログインしてください'
+                ], 400);
+            }
+
             /**
-             * attempt(credentials): 認証情報を指定して認証を試行
-             * only('email', 'password'): メールアドレスとパスワードを指定
+             * メール・パスワードログインの場合
              * 
              * 認証に失敗した場合は401 Unauthorizedを返却
              */
