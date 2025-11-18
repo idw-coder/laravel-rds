@@ -2,10 +2,10 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PostController;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\Api\UserController;
 
 // テスト用ルート
 Route::get('/test', function () {
