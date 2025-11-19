@@ -23,25 +23,21 @@ class AuthController extends Controller
             // ユーザーを検索
             $user = User::where('email', $request->email)->first();
 
-            // Googleログインの場合
-            if ($user && !$user->password) {
+            // Googleログイン専用ユーザーの場合
+            if ($user && is_null($user->password)) {
                 return response()->json([
-                    'message' => 'このアカウントは Google でログインしてください'
+                    'message' => 'このアカウントは Google アカウントでログインしてください。',
                 ], 400);
             }
 
-            /**
-             * メール・パスワードログインの場合
-             * 
-             * 認証に失敗した場合は401 Unauthorizedを返却
-             */
+            // メール・パスワード認証
             if (!Auth::attempt($request->only('email', 'password'))) {
                 return response()->json([
                     'message' => 'ログイン情報が正しくありません。',
                 ], 401);
             }
 
-            // 認証済みユーザー取得
+            // 認証済みユーザー
             /** @var User $user */
             $user = Auth::user();
 
@@ -53,7 +49,14 @@ class AuthController extends Controller
 
             return response()->json([
                 'token' => $token,
-                'user' => $user,
+                
+                // ロールを含めて返す（重要）
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->roles->pluck('name'),
+                ],
             ]);
         } catch (ValidationException $e) {
             // バリデーションエラーの場合
@@ -81,7 +84,7 @@ class AuthController extends Controller
                 $response['file'] = $e->getFile();
                 $response['line'] = $e->getLine();
             }
-            
+
             return response()->json($response, 500);
         }
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -35,6 +36,8 @@ class GoogleAuthController extends Controller
                 ->orWhere('email', $googleUser->email)
                 ->first();
 
+            $isNewUser = false;
+
             if ($user) {
                 // 既存ユーザーの場合、google_id を更新（未設定の場合）
                 if (!$user->google_id) {
@@ -49,13 +52,25 @@ class GoogleAuthController extends Controller
                     'google_id' => $googleUser->id,
                     'password' => null, // Googleログインユーザーはパスワード不要
                 ]);
+
+                $isNewUser = true;
             }
 
-            // トークンを生成
+            /**
+             * 新規ユーザーの場合 → free ロールを付与
+             */
+            if ($isNewUser) {
+                $freeRoleId = Role::where('name', 'free')->value('id'); // freeロールのID取得
+                if ($freeRoleId) {
+                    $user->roles()->attach($freeRoleId);
+                }
+            }
+
+            // SanctumのAPIトークン発行
             $token = $user->createToken('auth-token')->plainTextToken;
 
             return response()->json([
-                'user' => $user,
+                'user' => $user->load('roles'), // 付与ロールも返す
                 'token' => $token
             ]);
         } catch (\Exception $e) {

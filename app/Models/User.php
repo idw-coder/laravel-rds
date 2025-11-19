@@ -7,6 +7,7 @@ use Laravel\Sanctum\HasApiTokens; // SanctumのAPIトークン機能を有効化
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Role;
 
 class User extends Authenticatable
 {
@@ -66,5 +67,22 @@ class User extends Authenticatable
     public function posts()
     {
         return $this->hasMany(Post::class);
+    }
+
+    /**
+     * このユーザーが持つロール（多対多）
+     *
+     * belongsToMany:
+     * - 第1引数: 関連先モデル（Role）
+     * - 第2引数: 中間テーブル名（role_user）
+     * 
+     * これにより $user->roles() でロール一覧を取得でき、
+     * attach(), sync(), detach() などで紐付け操作が可能になる。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class, 'role_user');
     }
 }

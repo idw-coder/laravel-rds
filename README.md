@@ -22,6 +22,8 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
 ・リポジトリ: `git@github.com:idw-coder/laravel-rds.git`
 ・ブランチ戦略: main ブランチ運用
 
+### ユーザー認証
+Sanctum とGoogoleOAuth
 ### CI/CD
 ローカルではLaravel、MySQLはDocker Sail環境、Vueはnpm run dev で開発サーバーを使用
 フロントエンド（Vue）、バックエンド（Laravel）はlightsailに
@@ -504,6 +506,45 @@ graph TB
     style UpdateGoogleId fill:#fff3cd
 ```
 
+### roles テーブルの追加
+
+```bash
+./vendor/bin/sail artisan make:migration create_roles_table
+```
+
+#### ユーザーとロールの中間テーブル（role_user）
+
+「ユーザー × ロール」の関係を中間テーブルで管理する
+https://readouble.com/laravel/10.x/ja/eloquent-relationships.html#many-to-many
+
+```bash
+./vendor/bin/sail artisan make:migration create_role_user_table
+```
+
+Seeder を作成する
+```bash
+./vendor/bin/sail artisan make:seeder RoleSeeder
+```
+
+それに合わせてdatabase\seeders\DatabaseSeeder.phpも修正
+
+DatabaseSeeder.phpのrun()メソッドが実行される
+```bash
+./vendor/bin/sail artisan migrate:fresh --seed
+```
+- `migrate:fresh`: 全テーブルを削除して再作成（空の状態）
+- `--seed`: DatabaseSeederを実行して初期データを投入
+
+User.php roles() リレーション追加
+
+app\Models\Role.phpを作成
+
+
+## TODO
+
+- **ユーザー登録機能の追加**: 現在はGoogle認証でのみ自動登録されるため、メール・パスワードでの新規登録機能（`register`メソッド）を`AuthController`に追加する。これにより、Googleアカウントを持たないユーザーも登録可能になる。
+- **認証方法の統一**: メール・パスワード登録とGoogle認証の両方をサポートし、ユーザーが選択できるようにする。既存ユーザーが後からGoogle認証を紐付けたり、Google認証ユーザーがパスワードを設定できるようにする。
+
 ### APIのエラーハンドリングとレスポンス形式
 
 ルート一覧を確認
@@ -558,3 +599,4 @@ WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank 
 | GET\|HEAD | up | - | - | - |
 
 </div>
+
