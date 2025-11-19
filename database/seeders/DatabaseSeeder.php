@@ -16,34 +16,36 @@ class DatabaseSeeder extends Seeder
         // 先にロールを作成
         $this->call(RoleSeeder::class);
 
-        // freeロールを取得
-        $freeRoleId = \App\Models\Role::where('name', 'free')->value('id');
-
-        // テストユーザー作成
-        $user = User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => Hash::make('password'),
-        ]);
-
-        // freeロール付与
-        if ($freeRoleId) {
-            $user->roles()->attach($freeRoleId);
-        }
-
-        // adminロールを取得
+        // ロールID取得
+        $freeRoleId  = \App\Models\Role::where('name', 'free')->value('id');
+        $paidRoleId  = \App\Models\Role::where('name', 'paid')->value('id');
         $adminRoleId = \App\Models\Role::where('name', 'admin')->value('id');
 
-        // 管理者ユーザー作成
-        $adminUser = User::factory()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
+        // freeユーザー
+        $freeUser = User::factory()->create([
+            'name'     => 'Free User',
+            'email'    => 'free@example.com',
             'password' => Hash::make('password'),
         ]);
+        $freeUser->roles()->attach($freeRoleId);
 
-        // adminロール付与
-        if ($adminRoleId) {
-            $adminUser->roles()->attach($adminRoleId);
-        }
+        // paidユーザー
+        $paidUser = User::factory()->create([
+            'name'     => 'Paid User',
+            'email'    => 'paid@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $paidUser->roles()->attach($paidRoleId);
+
+        // adminユーザー
+        $adminUser = User::factory()->create([
+            'name'     => 'Admin User',
+            'email'    => 'admin@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $adminUser->roles()->attach($adminRoleId);
+
+        // 投稿シーダー
+        $this->call(PostSeeder::class);
     }
 }
