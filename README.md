@@ -5,14 +5,9 @@ Windowsのファイル（C:ドライブ）をDockerコンテナ（Linux）がマ
 Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に読む
 この変換処理で極端に遅くなる
 
-### 参考記事
-- [「WindowsでDockerを動かしたら遅かった😥」を解決する方法をまとめました。](https://zenn.dev/conbrio/articles/fcf937c4049132)
-- [Windows + WSL2 + docker + laravel を 10 倍速くする方法](https://www.aska-ltd.jp/jp/blog/197)
-
 ##  開発仕様（AI連携用プロンプト）
 
 ・Laravel API バックエンドプロジェクト
-・レンタルサーバーと AWS の両方にデプロイ可能な構成
 ・ローカル環境: Windows 11 + WSL2 (Ubuntu) + Docker Desktop + Laravel Sail
 ・プロジェクト配置: `/home/wida/dev/laravel-rds` (WSL2 Ubuntu内)
 ・配置理由: Windows ファイルシステムとの変換オーバーヘッドを回避し高速化
@@ -27,17 +22,66 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
 ・リポジトリ: `git@github.com:idw-coder/laravel-rds.git`
 ・ブランチ戦略: main ブランチ運用
 
-## 構成
+### CI/CD
+ローカルではLaravel、MySQLはDocker Sail環境、Vueはnpm run dev で開発サーバーを使用
+フロントエンド（Vue）、バックエンド（Laravel）はlightsailに
+Github ActionでmainブランチプッシュをトリガーにデプロイされるようCI/CDを導入
+MySQLはRDSを使用
 
-```
-laravel-rds/
-├── docs/
-│   ├── setup.md           # 環境構築手順
-│   ├── deployment.md      # デプロイ手順（レンタル/AWS）
-│   ├── database.md        # DB接続設定
-│   ├── api.md             # API仕様
-│   └── troubleshooting.md # よくある問題
-├── README.md              # プロジェクト概要
+### DB
+
+```sql
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail mysql bash
+
+mysql> show tables;
++------------------------+
+| Tables_in_laravel      |
++------------------------+
+| cache                  |
+| cache_locks            |
+| failed_jobs            |
+| job_batches            |
+| jobs                   |
+| migrations             |
+| password_reset_tokens  |
+| personal_access_tokens |
+| posts                  |
+| sessions               |
+| users                  |
++------------------------+
+11 rows in set (0.00 sec)
+
+mysql> desc posts;
++------------+---------------------+------+-----+---------+----------------+
+| Field      | Type                | Null | Key | Default | Extra          |
++------------+---------------------+------+-----+---------+----------------+
+| id         | bigint(20) unsigned | NO   | PRI | NULL    | auto_increment |
+| user_id    | bigint(20) unsigned | NO   | MUL | NULL    |                |
+| title      | varchar(255)        | NO   |     | NULL    |                |
+| content    | text                | NO   |     | NULL    |                |
+| status     | varchar(255)        | NO   |     | draft   |                |
+| created_at | timestamp           | YES  |     | NULL    |                |
+| updated_at | timestamp           | YES  |     | NULL    |                |
+| deleted_at | timestamp           | YES  |     | NULL    |                |
++------------+---------------------+------+-----+---------+----------------+
+8 rows in set (0.00 sec)
+
+mysql> desc users;
++-------------------+---------------------+------+-----+---------+----------------+
+| Field             | Type                | Null | Key | Default | Extra          |
++-------------------+---------------------+------+-----+---------+----------------+
+| id                | bigint(20) unsigned | NO   | PRI | NULL    | auto_increment |
+| google_id         | varchar(255)        | YES  | UNI | NULL    |                |
+| name              | varchar(255)        | NO   |     | NULL    |                |
+| email             | varchar(255)        | NO   | UNI | NULL    |                |
+| email_verified_at | timestamp           | YES  |     | NULL    |                |
+| password          | varchar(255)        | YES  |     | NULL    |                |
+| remember_token    | varchar(100)        | YES  |     | NULL    |                |
+| created_at        | timestamp           | YES  |     | NULL    |                |
+| updated_at        | timestamp           | YES  |     | NULL    |                |
++-------------------+---------------------+------+-----+---------+----------------+
+9 rows in set (0.01 sec)
+
 ```
 
 ## 手順
