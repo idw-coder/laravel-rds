@@ -57,5 +57,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [UserController::class, 'show']);
     Route::put('/profile', [UserController::class, 'update']);
     
+    /**
+     * APIリソースルート（RESTful API用）
+     * 
+     * メソッド: Route::apiResource()
+     *  - LaravelのRESTful APIリソースルートを自動的に定義するメソッド
+     *   - 'posts' (string): リソース名（URIのパス名として使用）
+     *   - PostController::class (string): コントローラークラス
+     *     - クラス: App\Http\Controllers\Api\PostController
+     * 
+     *   1. GET    /api/posts    
+     * 自動生成されるルート:       → PostController::index()
+     *   2. POST   /api/posts           → PostController::store()
+     *   3. GET    /api/posts/{post}    → PostController::show()
+     *   4. PUT    /api/posts/{post}    → PostController::update()
+     *   5. PATCH  /api/posts/{post}    → PostController::update()
+     *   6. DELETE /api/posts/{post}    → PostController::destroy()
+     */
     Route::apiResource('posts', PostController::class);
 });
