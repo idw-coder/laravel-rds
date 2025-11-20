@@ -42,6 +42,36 @@ Route::get('/test', function () {
  */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
+/**
+ * ユーザー登録（認証不要）
+ * 
+ * ルート名: register
+ * URI: POST /api/register
+ * HTTPメソッド: POST
+ * 
+ * [AuthController::class, 'register']
+ *  - コントローラークラス: App\Http\Controllers\Api\AuthController
+ *  - コントローラーメソッド: register()
+ * 
+ * 引数:
+ *   - Request $request: リクエストオブジェクト
+ *     - name (string, required, max:255): ユーザー名
+ *     - email (string, required, email, unique): ユーザーのメールアドレス（重複不可）
+ *     - password (string, required, min:8): ユーザーのパスワード（最小8文字）
+ * 
+ * 処理内容:
+ *   1. 名前、メールアドレス、パスワードでバリデーション
+ *   2. ユーザーを作成（パスワードはハッシュ化）
+ *   3. 'free' ロールを自動付与
+ *   4. Sanctumトークンを発行してログイン状態にする
+ * 
+ * 返り値:
+ *   - 成功時 (201): {'token': string, 'user': User}
+ *   - バリデーションエラー (422): {'message': string, 'errors': array}
+ *   - サーバーエラー (500): {'message': string}
+ */
+Route::post('/register', [AuthController::class, 'register'])->name('register');
+
 // Google OAuth（認証不要）
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
