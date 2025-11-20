@@ -23,19 +23,27 @@ class DatabaseSeeder extends Seeder
 
         // freeユーザー
         $freeUser = User::factory()->create([
-            'name'     => 'Free User',
-            'email'    => 'free@example.com',
+            'name'     => 'たなか',
+            'email'    => 'tanaka@example.com',
             'password' => Hash::make('password'),
         ]);
         $freeUser->roles()->attach($freeRoleId);
 
         // paidユーザー
         $paidUser = User::factory()->create([
-            'name'     => 'Paid User',
-            'email'    => 'paid@example.com',
+            'name'     => 'わたなべ',
+            'email'    => 'watanabe@example.com',
             'password' => Hash::make('password'),
         ]);
         $paidUser->roles()->attach($paidRoleId);
+
+        // paidユーザー2
+        $paidUser2 = User::factory()->create([
+            'name'     => 'まつもと',
+            'email'    => 'matsumoto@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $paidUser2->roles()->attach($paidRoleId);
 
         // adminユーザー
         $adminUser = User::factory()->create([

@@ -45,17 +45,6 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 // Google OAuth（認証不要）
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
-
-// 認証が必要なルート
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
-    
-    Route::post('/logout', [AuthController::class, 'logout']);
-
-    Route::get('/profile', [UserController::class, 'show']);
-    Route::put('/profile', [UserController::class, 'update']);
     
     /**
      * APIリソースルート（RESTful API用）
@@ -74,5 +63,19 @@ Route::middleware('auth:sanctum')->group(function () {
      *   5. PATCH  /api/posts/{post}    → PostController::update()
      *   6. DELETE /api/posts/{post}    → PostController::destroy()
      */
-    Route::apiResource('posts', PostController::class);
+// 認証不要で投稿一覧と詳細を取得できるようにする
+Route::apiResource('posts', PostController::class)->only(['index', 'show']);
+
+// 認証が必要なルート
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+    
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/profile', [UserController::class, 'show']);
+    Route::put('/profile', [UserController::class, 'update']);
+
+    Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
 });
