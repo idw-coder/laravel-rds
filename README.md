@@ -580,6 +580,42 @@ User.php roles() リレーション追加
 app\Models\Role.phpを作成
 
 
+### Laravel Debugbar 
+
+インストール
+```bash
+composer require barryvdh/laravel-debugbar --dev
+```
+
+API開発ではあまり使えない？
+- Debugbar UI は出ない（Vue経由のため）
+- 代わりに storage/logs/debugbar/*.json を見る
+
+### Telescope の導入
+
+```bash
+composer require laravel/telescope --dev
+```
+
+Telescope の画面を使えるようにする
+```bash
+php artisan telescope:install
+```
+
+実行すると、自動的に
+
+config/telescope.php
+
+マイグレーションファイル
+などが追加されます。
+
+そのあと続けて マイグレーションを実行
+```bash
+./vendor/bin/sail artisan migrate
+```
+
+http://localhost/telescopeでブラウザで確認できる
+
 ## TODO
 
 - **ユーザー登録機能の追加**: 現在はGoogle認証でのみ自動登録されるため、メール・パスワードでの新規登録機能（`register`メソッド）を`AuthController`に追加する。これにより、Googleアカウントを持たないユーザーも登録可能になる。

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 
 
 class PostController extends Controller
@@ -25,19 +26,30 @@ class PostController extends Controller
     public function index(Request $request)
     {
         // ログインしている場合はユーザーIDを取得、未ログインの場合はnull
-        // $request->user()は認証済みユーザーを返すが、未認証の場合はnullを返す
-        $currentUserId = $request->user()->id ?? null;
+        // 認証不要のルートでも、トークンが送信されていればユーザーを取得できるようにする
+        $user = $request->user();
+        $personalAccessToken = null;
+        
+        // トークンから明示的にユーザーを取得（認証不要ルートの場合）
+        if (!$user && $request->hasHeader('Authorization')) {
+            $token = str_replace('Bearer ', '', $request->header('Authorization'));
+            $personalAccessToken = PersonalAccessToken::findToken($token);
+            if ($personalAccessToken) {
+                $user = $personalAccessToken->tokenable;
+            }
+        }
+        
+        $currentUserId = $user?->id;
 
         $posts = Post::with('user') // ユーザー情報も一緒に取得（N+1問題の回避）
-            ->when($currentUserId, function ($query) use ($currentUserId) {
-                // ログイン時: 公開記事 + 自分の投稿（下書き含む）を表示
-                $query->where(function ($q) use ($currentUserId) {
-                    $q->where('status', 'published')  // 公開記事
-                      ->orWhere('user_id', $currentUserId); // または自分の投稿（下書きも含む）
-                });
-            }, function ($query) {
-                // 未ログイン時: 公開記事のみを表示
+            ->where(function ($query) use ($currentUserId) {
+                // 公開記事は常に表示
                 $query->where('status', 'published');
+                
+                // ログインしている場合は、自分の投稿（下書き含む）も表示
+                if ($currentUserId) {
+                    $query->orWhere('user_id', $currentUserId);
+                }
             })
             ->latest() // 新しい順に並べる（created_at DESC）
             ->get();
@@ -63,7 +75,21 @@ class PostController extends Controller
     // 詳細取得
     public function show(Request $request, Post $post)
     {
-        $currentUserId = $request->user()->id ?? null;
+        // ログインしている場合はユーザーIDを取得、未ログインの場合はnull
+        // 認証不要のルートでも、トークンが送信されていればユーザーを取得できるようにする
+        $user = $request->user();
+        
+        // トークンから明示的にユーザーを取得（認証不要ルートの場合）
+        if (!$user && $request->hasHeader('Authorization')) {
+            $token = str_replace('Bearer ', '', $request->header('Authorization'));
+            $personalAccessToken = PersonalAccessToken::findToken($token);
+            if ($personalAccessToken) {
+                $user = $personalAccessToken->tokenable;
+            }
+        }
+        
+        $currentUserId = $user?->id;
+        
         // 「下書き」かつ「自分の投稿でない」場合は閲覧禁止 (403 Forbidden)
         if ($post->status !== 'published' && $post->user_id !== $currentUserId) {
              abort(403, 'この投稿を閲覧する権限がありません。');
