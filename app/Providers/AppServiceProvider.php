@@ -11,10 +11,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // ローカル環境のみTelescopeを登録
+        // ローカル環境のみTelescopeを登録（class_existsチェック追加）
         if ($this->app->environment('local')) {
-            $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
-            $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+            if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+                $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+                $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+            }
         }
     }
 
