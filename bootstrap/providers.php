@@ -1,6 +1,12 @@
 <?php
 
-return [
+$providers = [
     App\Providers\AppServiceProvider::class,
-    App\Providers\TelescopeServiceProvider::class,
 ];
+
+// Telescopeはローカル環境でのみ有効化
+if (app()->environment('local')) {
+    $providers[] = App\Providers\TelescopeServiceProvider::class;
+}
+
+return $providers;
