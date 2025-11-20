@@ -25,13 +25,38 @@ jobs:
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
 
           ssh $SSH_USER@$SSH_HOST << 'EOF'
+            set -e  # エラーで停止
+            
             cd /var/www/laravel
-            git pull origin main
-            composer install --no-dev --optimize-autoloader
+            
+            # 1. 所有者を ubuntu に変更（最初に実行）
+            sudo chown -R ubuntu:ubuntu /var/www/laravel
+            
+            # 2. ローカルの変更を破棄して強制同期
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+            
+            # 3. 依存関係インストール
+            composer install --no-dev --optimize-autoloader --no-interaction
+            
+            # 4. キャッシュクリア
+            php artisan config:clear
+            php artisan cache:clear
+            
+            # 5. マイグレーション
             php artisan migrate --force
+            
+            # 6. 最適化
             php artisan config:cache
             php artisan route:cache
-            php artisan view:cache
+            
+            # 7. storage と cache の権限を www-data に変更
             sudo chown -R www-data:www-data storage bootstrap/cache
+            sudo chmod -R 775 storage bootstrap/cache
+            
+            # 8. PHP-FPM リロード
             sudo systemctl reload php8.3-fpm
+            
+            echo "Deployment completed successfully"
           EOF
