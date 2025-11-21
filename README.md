@@ -8,19 +8,20 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
 ##  開発仕様（AI連携用プロンプト）
 
 ・Laravel API バックエンドプロジェクト
-・ローカル環境: Windows 11 + WSL2 (Ubuntu) + Docker Desktop + Laravel Sail
-・プロジェクト配置: `/home/wida/dev/laravel-rds` (WSL2 Ubuntu内)
-・配置理由: Windows ファイルシステムとの変換オーバーヘッドを回避し高速化
-・データベース接続:
-  - ローカル開発: Docker MySQL
-  - レンタルサーバー: レンタルサーバーの MySQL
-  - AWS: Amazon RDS (MySQL)
-・デプロイ先:
-  - レンタルサーバー: FTP/SSH でデプロイ
-  - AWS: EC2 または Elastic Beanstalk + RDS
-・技術スタック: PHP 8.2+、Laravel 12.x、MySQL 8.0
+・ローカル環境 Windows 11 
+  - バックエンド（API、DB）はWSL2 (Ubuntu) + Laravel Sail
+    - プロジェクト配置 `/home/wida/dev/laravel-rds` (WSL2 Ubuntu内)
+      Windows ファイルシステムとの変換オーバーヘッドを回避し高速化するため
+  - フロントエンドはVueをnpm run devで開発サーバーを使用
+・データベース接続
+  - ローカル開発 Docker MySQL
+  - AWS Amazon RDS (MySQL)
+・デプロイ先
+  - AWS Lightsail (Laravel API)
+  - AWS RDS (MySQL)
+  - GitHub ActionsでCI/CD自動デプロイ（mainブランチへのプッシュでトリガー）
+・技術スタック: PHP 8.3、Laravel 12.x、MySQL 8.0
 ・リポジトリ: `git@github.com:idw-coder/laravel-rds.git`
-・ブランチ戦略: main ブランチ運用
 
 ### ユーザー認証
 Sanctum とGoogoleOAuth
@@ -323,7 +324,7 @@ WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank 
 wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$
 ```
 
-### 認証
+### Sanctum認証
 
 Sanctum のインストール、Sanctum の設定ファイル公開
 
@@ -361,6 +362,27 @@ SESSION_DOMAIN=localhost
 - Sanctumマイグレーションを実行
 ```
 ./vendor/bin/sail artisan migrate
+```
+
+実行時に自動で personal_access_tokens テーブルが作成
+
+```sql
+mysql> desc personal_access_tokens;
++----------------+---------------------+------+-----+---------+----------------+
+| Field          | Type                | Null | Key | Default | Extra          |
++----------------+---------------------+------+-----+---------+----------------+
+| id             | bigint(20) unsigned | NO   | PRI | NULL    | auto_increment |
+| tokenable_type | varchar(255)        | NO   | MUL | NULL    |                |
+| tokenable_id   | bigint(20) unsigned | NO   |     | NULL    |                |
+| name           | text                | NO   |     | NULL    |                |
+| token          | varchar(64)         | NO   | UNI | NULL    |                |
+| abilities      | text                | YES  |     | NULL    |                |
+| last_used_at   | timestamp           | YES  |     | NULL    |                |
+| expires_at     | timestamp           | YES  | MUL | NULL    |                |
+| created_at     | timestamp           | YES  |     | NULL    |                |
+| updated_at     | timestamp           | YES  |     | NULL    |                |
++----------------+---------------------+------+-----+---------+----------------+
+10 rows in set (0.10 sec)
 ```
 
 - ユーザーの登録

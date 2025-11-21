@@ -96,7 +96,7 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleC
 // 認証不要で投稿一覧と詳細を取得できるようにする
 Route::apiResource('posts', PostController::class)->only(['index', 'show']);
 
-// 認証が必要なルート
+// 認証が必要なルート、Sanctum 認証でトークンが有効な場合はルート処理、無効な場合は401エラー
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
