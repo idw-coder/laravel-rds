@@ -22,24 +22,11 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
     
-    /**
-     * APIリソースルート（RESTful API用）
-     * 
-     * メソッド: Route::apiResource()
-     *  - LaravelのRESTful APIリソースルートを自動的に定義するメソッド
-     *   - 'posts' (string): リソース名（URIのパス名として使用）
-     *   - PostController::class (string): コントローラークラス
-     *     - クラス: App\Http\Controllers\Api\PostController
-     * 
-     *   1. GET    /api/posts    
-     * 自動生成されるルート:       → PostController::index()
-     *   2. POST   /api/posts           → PostController::store()
-     *   3. GET    /api/posts/{post}    → PostController::show()
-     *   4. PUT    /api/posts/{post}    → PostController::update()
-     *   5. PATCH  /api/posts/{post}    → PostController::update()
-     *   6. DELETE /api/posts/{post}    → PostController::destroy()
-     */
-// 認証不要で投稿一覧と詳細を取得できるようにする
+/**
+ * 投稿リソース（RESTful API）
+ * apiResource: RESTful APIのルートを自動生成（GET /posts, GET /posts/{id}, POST /posts, PUT /posts/{id}, DELETE /posts/{id}）
+ * 認証不要: 一覧・詳細取得のみ
+ */
 Route::apiResource('posts', PostController::class)->only(['index', 'show']);
 
 // 認証が必要なルート、Sanctum 認証でトークンが有効な場合はルート処理、無効な場合は401エラー
