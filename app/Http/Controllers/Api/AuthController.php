@@ -12,20 +12,20 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request) // Request は引数 $request の型（型ヒント）$request が Request クラスのインスタンス
     {
         try {
-            // バリデーション
+            // 配列の各キーを値のルールでバリデーション
             $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
 
             // ユーザーを検索
-            $user = User::where('email', $request->email)->first();
+            $existingUser = User::where('email', $request->email)->first();
 
             // Googleログイン専用ユーザーの場合
-            if ($user && is_null($user->password)) {
+            if ($existingUser && is_null($existingUser->password)) { // Googleログインでユーザーを作成する際に password を null に設定しているため
                 return response()->json([
                     'message' => 'このアカウントは Google アカウントでログインしてください。',
                 ], 400);
@@ -46,10 +46,10 @@ class AuthController extends Controller
              * createToken(name): トークン名を指定してトークンを発行
              * plainTextToken: トークンを文字列で返却
              */
-            $token = $user->createToken('api-token')->plainTextToken;
+            $authToken = $user->createToken('api-token')->plainTextToken;
 
             return response()->json([
-                'token' => $token,
+                'authToken' => $authToken,
                 
                 // ロールを含めて返す（重要）
                 'user' => [
@@ -117,10 +117,10 @@ class AuthController extends Controller
              * createToken(name): トークン名を指定してトークンを発行
              * plainTextToken: トークンを文字列で返却
              */
-            $token = $user->createToken('api-token')->plainTextToken;
+            $authToken = $user->createToken('api-token')->plainTextToken;
 
             return response()->json([
-                'token' => $token,
+                'authToken' => $authToken,
                 // ロールを含めて返す（重要）
                 'user' => [
                     'id' => $user->id,

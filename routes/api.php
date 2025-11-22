@@ -13,15 +13,9 @@ Route::get('/test', function () {
 });
 
 /**
- * ログイン（認証不要）
- * 
- * ルート名: login
- * URI: POST /api/login
- * HTTPメソッド: POST
- * 
+ * ログイン
  * [AuthController::class, 'login']
- *  - コントローラークラス: App\Http\Controllers\Api\AuthController
- *  - コントローラーメソッド: login()
+ * @param Request $request
  * 
  * 引数:
  *   - Request $request: リクエストオブジェクト
