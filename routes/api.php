@@ -12,58 +12,10 @@ Route::get('/test', function () {
     return response()->json(['message' => 'API is working']);
 });
 
-/**
- * ログイン
- * [AuthController::class, 'login']
- * @param Request $request
- * 
- * 引数:
- *   - Request $request: リクエストオブジェクト
- *     - email (string, required): ユーザーのメールアドレス
- *     - password (string, required): ユーザーのパスワード
- * 
- * 処理内容:
- *   1. メールアドレスとパスワードでバリデーション
- *   2. Googleログイン用アカウントの場合はエラーを返す
- *   3. メール・パスワードで認証を試行
- *   4. 認証成功時、Sanctumトークンを発行
- * 
- * 返り値:
- *   - 成功時 (200): {'token': string, 'user': User}
- *   - バリデーションエラー (422): {'message': string, 'errors': array}
- *   - 認証失敗 (401): {'message': string}
- *   - サーバーエラー (500): {'message': string}
- */
+// ログイン
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
-/**
- * ユーザー登録（認証不要）
- * 
- * ルート名: register
- * URI: POST /api/register
- * HTTPメソッド: POST
- * 
- * [AuthController::class, 'register']
- *  - コントローラークラス: App\Http\Controllers\Api\AuthController
- *  - コントローラーメソッド: register()
- * 
- * 引数:
- *   - Request $request: リクエストオブジェクト
- *     - name (string, required, max:255): ユーザー名
- *     - email (string, required, email, unique): ユーザーのメールアドレス（重複不可）
- *     - password (string, required, min:8): ユーザーのパスワード（最小8文字）
- * 
- * 処理内容:
- *   1. 名前、メールアドレス、パスワードでバリデーション
- *   2. ユーザーを作成（パスワードはハッシュ化）
- *   3. 'free' ロールを自動付与
- *   4. Sanctumトークンを発行してログイン状態にする
- * 
- * 返り値:
- *   - 成功時 (201): {'token': string, 'user': User}
- *   - バリデーションエラー (422): {'message': string, 'errors': array}
- *   - サーバーエラー (500): {'message': string}
- */
+// ユーザー登録
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 
 // Google OAuth（認証不要）
