@@ -9,7 +9,7 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
 
 ・Laravel API バックエンドプロジェクト
 ・ローカル環境 Windows 11 
-  - バックエンド（API、DB）はWSL2 (Ubuntu) + Laravel Sail
+  - バックエンド（API、DB）はWSL2 (Ubuntu) + Laravel Sail（512 MB RAM、2 vCPU、20 GB SSD）
     - プロジェクト配置 `/home/wida/dev/laravel-rds` (WSL2 Ubuntu内)
       Windows ファイルシステムとの変換オーバーヘッドを回避し高速化するため
   - フロントエンドはVueをnpm run devで開発サーバーを使用
@@ -676,6 +676,208 @@ http://localhost/telescopeでブラウザで確認できる
 
 ---
 
+### Lightsail に MySQL 統合 
+
+**Lightsail メモリにアップグレードするか**
+
+現状のメモリの使用状況
+```bash
+ubuntu@ip-172-26-6-105:~$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           416Mi       230Mi        24Mi       5.2Mi       200Mi       186Mi
+Swap:             0B          0B          0B
+ubuntu@ip-172-26-6-105:~$ 
+```
+
+186程余裕ありMySQLで120程使用すると考えると60MBほど余裕はある
+
+ただ今後追加機能で使用するメモリ増える気もするので1GB にアップグレードします
+
+インスタンス停止
+スナップショットを作成
+作成したスナップショットの 「︙」メニュー をクリック
+「新しいインスタンスを作成」 を選択
+$7 プラン を選択
+
+インスタンス一覧で 古い laravel-api（停止中）をクリック
+「ネットワーキング」 タブをクリック
+静的IP（54.178.81.51）の横にある 「デタッチ」 をクリック
+
+ファイアウォールルールでHTTPSを追加 
+
+#### MySQL のインストール
+
+```bash
+# MySQL サーバーインストール
+sudo apt update
+sudo apt install -y mysql-server
+
+# MySQL の起動と自動起動設定
+sudo systemctl start mysql
+sudo systemctl enable mysql
+
+# 状態確認
+sudo systemctl status mysql
+```
+
+MySQL セキュリティ設定
+MySQL のセキュリティを強化するための対話式ツール
+
+```bash
+sudo mysql_secure_installation
+
+Press y|Y for Yes, any other key for No: 
+
+Skipping password set for root as authentication with auth_socket is used by default.
+If you would like to use password authentication instead, this can be done with the "ALTER_USER" command.
+See https://dev.mysql.com/doc/refman/8.0/en/alter-user.html#alter-user-password-management for more information.
+
+By default, a MySQL installation has an anonymous user,
+allowing anyone to log into MySQL without having to have
+a user account created for them. This is intended only for
+testing, and to make the installation go a bit smoother.
+You should remove them before moving into a production
+environment.
+
+Remove anonymous users? (Press y|Y for Yes, any other key for No) : y
+Success.
+
+
+Normally, root should only be allowed to connect from
+'localhost'. This ensures that someone cannot guess at
+the root password from the network.
+
+Disallow root login remotely? (Press y|Y for Yes, any other key for No) : y
+Success.
+
+By default, MySQL comes with a database named 'test' that
+anyone can access. This is also intended only for testing,
+and should be removed before moving into a production
+environment.
+
+
+Remove test database and access to it? (Press y|Y for Yes, any other key for No) : y
+ - Dropping test database...
+Success.
+
+ - Removing privileges on test database...
+Success.
+
+Reloading the privilege tables will ensure that all changes
+made so far will take effect immediately.
+
+Reload privilege tables now? (Press y|Y for Yes, any other key for No) : y
+Success.
+
+All done! 
+ubuntu@ip-172-26-2-247:/var/www/laravel$ 
+```
+
+##### データベースとユーザーの作成
+
+```sql
+sudo mysql
+
+CREATE DATABASE laravel_production CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'laravel_user'@'localhost' IDENTIFIED BY '強力なパスワード';
+GRANT ALL PRIVILEGES ON laravel_production.* TO 'laravel_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+RDS からデータをエクスポート
+```bash
+ubuntu@ip-172-26-2-247:/var/www/laravel$ mysqldump -h laravel-rds-db.c1ewmsukaqko.ap-northeast-1.rds.amazonaws.com -u admin -p laravel_production > /tmp/rds_backup.sql
+Enter password: 
+Warning: A partial dump from a server that has GTIDs will by default include the GTIDs of all transactions, even those that changed suppressed parts of the database. If you don't want to restore GTIDs, pass --set-gtid-purged=OFF. To make a complete dump, pass --all-databases --triggers --routines --events. 
+Warning: A dump from a server that has GTIDs enabled will by default include the GTIDs of all transactions, even those that were executed during its extraction and might not be represented in the dumped data. This might result in an inconsistent data dump. 
+In order to ensure a consistent backup of the database, pass --single-transaction or --lock-all-tables or --master-data. 
+-- Warning: column statistics not supported by the server.
+ubuntu@ip-172-26-2-247:/var/www/laravel$ 
+
+# インポート
+ubuntu@ip-172-26-2-247:/var/www/laravel$ sudo mysql laravel_production < /tmp/rds_backup.sql
+# 確認
+ubuntu@ip-172-26-2-247:/var/www/laravel$ sudo mysql laravel_production -e "SHOW TABLES;"
++------------------------------+
+| Tables_in_laravel_production |
++------------------------------+
+| cache                        |
+| cache_locks                  |
+| failed_jobs                  |
+| job_batches                  |
+| jobs                         |
+| migrations                   |
+| password_reset_tokens        |
+| personal_access_tokens       |
+| posts                        |
+| role_user                    |
+| roles                        |
+| sessions                     |
+| telescope_entries            |
+| telescope_entries_tags       |
+| telescope_monitoring         |
+| users                        |
++------------------------------+
+ubuntu@ip-172-26-2-247:/var/www/laravel$ 
+```
+.envファイルを編集
+DB_HOST: RDS → 127.0.0.1
+DB_USERNAME: admin → laravel_user
+DB_PASSWORD: RDS パスワード → 新パスワード
+
+```bash
+# 1. プロジェクト全体の所有者を www-data に変更
+sudo chown -R www-data:www-data /var/www/laravel
+
+# 2. ubuntu ユーザーを www-data グループに追加
+sudo usermod -a -G www-data ubuntu
+
+# 3. 権限設定
+sudo chmod -R 755 /var/www/laravel
+sudo chmod -R 775 /var/www/laravel/storage
+sudo chmod -R 775 /var/www/laravel/bootstrap/cache
+
+# 4. SSH ログアウト・再ログイン（グループ変更を反映）
+exit
+ssh ubuntu@54.178.81.51
+
+# 5. Laravel キャッシュ作成
+cd /var/www/laravel
+php artisan config:cache
+
+# 6. データベース接続確認
+php artisan migrate:status
+
+# 7. PHP-FPM 再起動
+sudo systemctl restart php8.3-fpm
+```
+
+ MySQLのバージョンは
+```bash
+ubuntu@ip-172-26-2-247:/var/www/laravel$ mysql --version
+mysql  Ver 8.0.44-0ubuntu0.24.04.1 for Linux on x86_64 ((Ubuntu))
+```
+
+#### 旧 Lightsail インスタンスの削除
+
+Lightsail コンソールを開く
+古い laravel-api（停止中）を選択
+「︙」メニュー → 「削除」
+
+#### RDS インスタンスの削除
+AWS RDS コンソールを開く
+laravel-rds-db を選択
+「アクション」→ 「削除」
+最終スナップショットを作成 → スナップショット名: laravel-rds-final-backup-20251123
+☑ 自動バックアップを保持 → チェックを外す
+delete me と入力して削除確認
+
+RDS コンソール → 「自動バックアップ」タブで
+laravel-rds-db の保持されたバックアップを選択
+「アクション」 → 「削除」
+
+システムスナップショットが後程削除されるのを確認
+
 ## プロジェクト方針と戦略策定
 
 1.  **ポートフォリオとしての活用**
@@ -703,6 +905,10 @@ http://localhost/telescopeでブラウザで確認できる
   - 採用担当者が最も関心を持つ「技術的課題へのアプローチ」を可視化できる。
   - エンジニア向け広告は単価（RPM）が高い傾向にあり、少ないPVでも収益化の可能性がある。
 
+
+
+
+
 ### 「ツールやサービスをプロダクトとして組み込む」
 
 - OGP/サムネイル画像メーカー
@@ -717,8 +923,6 @@ Intervention Image ライブラリを使った画像処理
 
 ## TODO
 
-- **ユーザー登録機能の追加**: 現在はGoogle認証でのみ自動登録されるため、メール・パスワードでの新規登録機能（`register`メソッド）を`AuthController`に追加する。これにより、Googleアカウントを持たないユーザーも登録可能になる。
-- **認証方法の統一**: メール・パスワード登録とGoogle認証の両方をサポートし、ユーザーが選択できるようにする。既存ユーザーが後からGoogle認証を紐付けたり、Google認証ユーザーがパスワードを設定できるようにする。
 
 
 ### APIのエラーハンドリングとレスポンス形式
