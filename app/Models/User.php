@@ -30,7 +30,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'google_id', // Google OAuthのID
+        'google_id',
+        'avatar',
     ];
 
     /**
