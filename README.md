@@ -17,8 +17,7 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
   - ローカル開発 Docker MySQL
   - AWS Amazon RDS (MySQL)
 ・デプロイ先
-  - AWS Lightsail (Laravel API)
-  - AWS RDS (MySQL)
+  - AWS Lightsail (Laravel API、MySQL)
   - GitHub ActionsでCI/CD自動デプロイ（mainブランチへのプッシュでトリガー）
 ・技術スタック: PHP 8.3、Laravel 12.x、MySQL 8.0
 ・リポジトリ: `git@github.com:idw-coder/laravel-rds.git`
