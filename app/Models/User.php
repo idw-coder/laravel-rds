@@ -40,7 +40,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'remember_token',
+        'remember_token', // 注意: このプロジェクトでは未使用（API認証にSanctumを使用しているため、WebセッションのRemember Me機能は使用していない）
     ];
 
     /**

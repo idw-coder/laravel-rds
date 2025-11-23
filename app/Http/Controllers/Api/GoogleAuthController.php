@@ -67,7 +67,7 @@ class GoogleAuthController extends Controller
             }
 
             // SanctumのAPIトークン発行
-            $authToken = $user->createToken('auth-token')->plainTextToken;
+            $authToken = $user->createToken('sanctum-api-token')->plainTextToken;
 
             return response()->json([
                 'user' => $user->load('roles'), // 付与ロールも返す

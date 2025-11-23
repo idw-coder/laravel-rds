@@ -61,7 +61,7 @@ class AuthController extends Controller
              * createToken(name): トークン名を指定してトークンを発行
              * plainTextToken: トークンを文字列で返却
              */
-            $authToken = $user->createToken('api-token')->plainTextToken;
+            $authToken = $user->createToken('sanctum-api-token')->plainTextToken;
 
             return response()->json([
                 'authToken' => $authToken,
@@ -132,7 +132,7 @@ class AuthController extends Controller
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => bcrypt($validated['password']),
+                'password' => bcrypt($validated['password']), // パスワードをハッシュ化
             ]);
 
             // free ロールを付与
@@ -145,7 +145,7 @@ class AuthController extends Controller
              * createToken(name): トークン名を指定してトークンを発行
              * plainTextToken: トークンを文字列で返却
              */
-            $authToken = $user->createToken('api-token')->plainTextToken;
+            $authToken = $user->createToken('sanctum-api-token')->plainTextToken;
 
             return response()->json([
                 'authToken' => $authToken,
