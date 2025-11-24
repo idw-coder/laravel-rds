@@ -2,18 +2,18 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * API テストエンドポイントが正常に動作するかテスト
      */
     public function test_the_application_returns_a_successful_response(): void
     {
-        $response = $this->get('/');
+        $response = $this->get('/api/test');  // 存在するルートに変更
 
         $response->assertStatus(200);
+        $response->assertJson(['message' => 'API is working']);
     }
 }
