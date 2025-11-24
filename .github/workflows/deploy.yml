@@ -58,6 +58,9 @@ jobs:
       # ステップ6: テストを実行
       # ここで AuthTest.php、PostControllerTest.php などのテストが実行される
       - name: Run tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USERNAME: root
         run: php artisan test  # PHPUnit を実行
 
   # ========================================
