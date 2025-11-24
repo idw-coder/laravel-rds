@@ -877,6 +877,30 @@ laravel-rds-db の保持されたバックアップを選択
 
 システムスナップショットが後程削除されるのを確認
 
+
+### 「ユーザー認証とロール（権限）」 をテスト
+
+database\factories\UserFactory.phpを修正
+
+
+テストファイル作成
+```bash
+./vendor/bin/sail artisan make:test Api/AuthTest
+```
+テスト実行
+```bash
+./vendor/bin/sail artisan test --filter=AuthTest
+```
+
+#### CI/CD にテスト組み込み
+
+.github\workflows\deploy.ymlを追記
+.env.testingを作成
+
+
+
+
+
 ## プロジェクト方針と戦略策定
 
 1.  **ポートフォリオとしての活用**

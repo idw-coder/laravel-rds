@@ -6,7 +6,65 @@ on:
       - main
 
 jobs:
+  # ========================================
+  # テストジョブ（GitHub Actions の仮想マシン上で実行）
+  # ========================================
+  test:
+    runs-on: ubuntu-latest  # GitHub が提供する Ubuntu 環境（一時的）
+    
+    # テスト用の MySQL サーバーを起動
+    # このMySQLはテスト実行中だけ存在し、終了後は削除される
+    services:
+      mysql:
+        image: mysql:8.0  # Docker イメージから MySQL 8.0 を起動
+        env:
+          MYSQL_ROOT_PASSWORD: password  # root のパスワード
+          MYSQL_DATABASE: testing        # テスト用DBを自動作成
+        ports:
+          - 3306:3306  # MySQL のポートを公開
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+      # ステップ1: リポジトリのコードを取得
+      # あなたが push したコードを GitHub Actions の環境にダウンロード
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # ステップ2: PHP 8.3 をインストール
+      # GitHub の環境には最初 PHP が入っていないのでインストール
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'  # PHP 8.3 を指定
+          extensions: mbstring, pdo, pdo_mysql  # Laravel に必要な拡張機能
+          coverage: none  # カバレッジ計測は不要
+      
+      # ステップ3: .env ファイルを作成
+      # リポジトリには .env はないので .env.testing をコピー
+      - name: Copy .env
+        run: cp .env.testing .env
+      
+      # ステップ4: Composer で Laravel の依存パッケージをインストール
+      # ここで Laravel やその他のパッケージがインストールされる
+      # vendor/ ディレクトリが作成される
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      # ステップ5: Laravel のアプリケーションキーを生成
+      # .env の APP_KEY を設定（暗号化に使用）
+      - name: Generate application key
+        run: php artisan key:generate
+      
+      # ステップ6: テストを実行
+      # ここで AuthTest.php などのテストが実行される
+      - name: Run tests
+        run: php artisan test  # PHPUnit を実行
+
+  # ========================================
+  # デプロイジョブ（本番環境 Lightsail へデプロイ）
+  # ========================================
   deploy:
+    needs: test  # test ジョブが成功した場合のみ実行される
     runs-on: ubuntu-latest
 
     steps:

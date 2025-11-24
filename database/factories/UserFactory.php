@@ -29,6 +29,8 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'google_id' => null,
+            'avatar' => null,
         ];
     }
 
@@ -40,5 +42,16 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /**
+     * ロール付きユーザーを作成
+     */
+    public function withRole(string $roleName): static
+    {
+        return $this->afterCreating(function ($user) use ($roleName) {
+            $role = \App\Models\Role::firstOrCreate(['name' => $roleName]);
+            $user->roles()->attach($role);
+        });
     }
 }
