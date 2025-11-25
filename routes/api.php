@@ -21,6 +21,9 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 // Google OAuth（認証不要）
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+
+// アバター画像取得（認証不要
+Route::get('/avatar/{userId}', [UserController::class, 'getAvatar']);
     
 /**
  * 投稿リソース（RESTful API）
@@ -38,7 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/profile', [UserController::class, 'show']);
-    Route::put('/profile', [UserController::class, 'update']);
+    Route::post('/profile', [UserController::class, 'update']);
 
     Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
 });

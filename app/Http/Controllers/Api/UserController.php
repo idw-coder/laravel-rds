@@ -32,7 +32,8 @@ class UserController extends Controller
                 Rule::unique('users')->ignore($user->id),
             ],
             'password' => 'nullable|min:8|confirmed',
-            'avatar' => 'nullable|string',
+            'avatar' => 'nullable|file|image|max:2048', // 変更: file型、2MB以下
+            'delete_avatar' => 'nullable|boolean', // 追加: 削除フラグ
         ]);
 
         // 名前とメールアドレスを更新
@@ -44,22 +45,21 @@ class UserController extends Controller
             $user->password = Hash::make($validated['password']);
         }
 
-        // アバターの処理
-        if (array_key_exists('avatar', $validated)) {
-            if ($validated['avatar'] === null || $validated['avatar'] === '') {
-                // 削除の場合
-                $user->avatar = null;
-            } elseif (!empty($validated['avatar'])) {
-                // 更新の場合
-                $avatar = $validated['avatar'];
-                
-                // data:image/png;base64, などのプレフィックスを削除
-                if (preg_match('/^data:image\/(\w+);base64,/', $avatar)) {
-                    $avatar = substr($avatar, strpos($avatar, ',') + 1);
-                }
-                
-                $user->avatar = $avatar;
-            }
+        // アバター削除の処理
+        if ($request->input('delete_avatar') === 'true' || $request->input('delete_avatar') === true) {
+            $user->avatar = null;
+            $user->avatar_mime = null;
+        }
+        // アバターアップロードの処理
+        elseif ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            
+            // バイナリデータとして読み込み
+            $binary = file_get_contents($file->getRealPath());
+            
+            // DBに保存
+            $user->avatar = $binary;
+            $user->avatar_mime = $file->getMimeType(); // MIME typeも保存
         }
 
         $user->save();
@@ -68,5 +68,21 @@ class UserController extends Controller
             'message' => 'プロフィールを更新しました',
             'user' => $user,
         ]);
+    }
+
+    /**
+     * アバター画像を取得
+     */
+    public function getAvatar(Request $request, $userId)
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        if (!$user->avatar) {
+            return response()->json(['error' => 'Avatar not found'], 404);
+        }
+        
+        return response($user->avatar)
+            ->header('Content-Type', $user->avatar_mime ?? 'image/jpeg')
+            ->header('Cache-Control', 'public, max-age=31536000'); // 1年キャッシュ
     }
 }
