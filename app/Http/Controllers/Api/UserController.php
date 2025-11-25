@@ -32,8 +32,9 @@ class UserController extends Controller
                 Rule::unique('users')->ignore($user->id),
             ],
             'password' => 'nullable|min:8|confirmed',
-            'avatar' => 'nullable|file|image|max:2048', // 変更: file型、2MB以下
-            'delete_avatar' => 'nullable|boolean', // 追加: 削除フラグ
+            'avatar' => 'nullable|file|image|max:2048', // file型、2MB以下
+            // 'delete_avatar' => 'nullable|boolean', // 削除フラグ
+            'delete_avatar' => 'nullable|string',
         ]);
 
         // 名前とメールアドレスを更新
@@ -55,6 +56,11 @@ class UserController extends Controller
             $file = $request->file('avatar');
             
             // バイナリデータとして読み込み
+            /**
+             * file_get_contents: ファイルの内容を文字列として読み込む
+             * @param string $filename ファイルパス
+             * @return string ファイルの内容（バイナリデータ）
+             */
             $binary = file_get_contents($file->getRealPath());
             
             // DBに保存
@@ -81,6 +87,10 @@ class UserController extends Controller
             return response()->json(['error' => 'Avatar not found'], 404);
         }
         
+        /**
+         *   $user->avatar はBLOBカラムのバイナリデータ（文字列）
+         *   クライアント側では、このエンドポイントを画像のURLとして直接使用できる
+         */
         return response($user->avatar)
             ->header('Content-Type', $user->avatar_mime ?? 'image/jpeg')
             ->header('Cache-Control', 'public, max-age=31536000'); // 1年キャッシュ
