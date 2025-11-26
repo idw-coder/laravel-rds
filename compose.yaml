@@ -31,6 +31,7 @@ services:
         image: 'mysql/mysql-server:5.7'
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
+        command: --max_allowed_packet=64M # プロフィール画像アップロード時のエラー対策
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ROOT_HOST: '%'

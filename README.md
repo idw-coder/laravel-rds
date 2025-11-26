@@ -13,9 +13,6 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
     - プロジェクト配置 `/home/wida/dev/laravel-rds` (WSL2 Ubuntu内)
       Windows ファイルシステムとの変換オーバーヘッドを回避し高速化するため
   - フロントエンドはVueをnpm run devで開発サーバーを使用
-・データベース接続
-  - ローカル開発 Docker MySQL
-  - AWS Amazon RDS (MySQL)
 ・デプロイ先
   - AWS Lightsail (Laravel API、MySQL)
   - GitHub ActionsでCI/CD自動デプロイ（mainブランチへのプッシュでトリガー）

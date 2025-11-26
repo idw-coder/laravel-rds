@@ -270,6 +270,15 @@
             </main>
         </div>
 
+        @if (!app()->environment('production'))
+            <div class="w-full lg:max-w-4xl max-w-[335px] mt-6 p-6 bg-white dark:bg-[#161615] dark:text-[#EDEDEC] shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d] rounded-lg">
+                <h2 class="mb-4 font-medium text-[#1b1b18] dark:text-[#EDEDEC]">PHP Info (Local Only)</h2>
+                <div class="overflow-auto max-h-[600px]">
+                    <?php phpinfo(); ?>
+                </div>
+            </div>
+        @endif
+
         @if (Route::has('login'))
             <div class="h-14.5 hidden lg:block"></div>
         @endif

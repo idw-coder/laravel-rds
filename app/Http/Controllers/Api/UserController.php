@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -24,56 +25,79 @@ class UserController extends Controller
     {
         $user = $request->user();
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => [
-                'required',
-                'email',
-                Rule::unique('users')->ignore($user->id),
-            ],
-            'password' => 'nullable|min:8|confirmed',
-            'avatar' => 'nullable|file|image|max:2048', // file型、2MB以下
-            // 'delete_avatar' => 'nullable|boolean', // 削除フラグ
-            'delete_avatar' => 'nullable|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => [
+                    'required',
+                    'email',
+                    Rule::unique('users')->ignore($user->id),
+                ],
+                'password' => 'nullable|min:8|confirmed',
+                'avatar' => 'nullable|file|image|max:5120', // file型、5MB以下
+                // 'delete_avatar' => 'nullable|boolean', // 削除フラグ
+                'delete_avatar' => 'nullable|string',
+            ]);
 
-        // 名前とメールアドレスを更新
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
+            // 名前とメールアドレスを更新
+            $user->name = $validated['name'];
+            $user->email = $validated['email'];
 
-        // パスワードが入力されている場合のみ更新
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
+            // パスワードが入力されている場合のみ更新
+            if (!empty($validated['password'])) {
+                $user->password = Hash::make($validated['password']);
+            }
 
-        // アバター削除の処理
-        if ($request->input('delete_avatar') === 'true' || $request->input('delete_avatar') === true) {
-            $user->avatar = null;
-            $user->avatar_mime = null;
-        }
-        // アバターアップロードの処理
-        elseif ($request->hasFile('avatar')) {
-            $file = $request->file('avatar');
+            // アバター削除の処理
+            if ($request->input('delete_avatar') === 'true' || $request->input('delete_avatar') === true) {
+                $user->avatar = null;
+                $user->avatar_mime = null;
+            }
+            // アバターアップロードの処理
+            elseif ($request->hasFile('avatar')) {
+                $file = $request->file('avatar');
+                
+                // バイナリデータとして読み込み
+                /**
+                 * file_get_contents: ファイルの内容を文字列として読み込む
+                 * @param string $filename ファイルパス
+                 * @return string ファイルの内容（バイナリデータ）
+                 */
+                $binary = file_get_contents($file->getRealPath());
+                
+                // DBに保存
+                $user->avatar = $binary;
+                $user->avatar_mime = $file->getMimeType(); // MIME typeも保存
+            }
+
+            $user->save();
+
+            return response()->json([
+                'message' => 'プロフィールを更新しました',
+                'user' => $user,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'バリデーションエラー',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // DB関連エラー（max_allowed_packet等）
+            Log::error('Profile update DB error: ' . $e->getMessage());
             
-            // バイナリデータとして読み込み
-            /**
-             * file_get_contents: ファイルの内容を文字列として読み込む
-             * @param string $filename ファイルパス
-             * @return string ファイルの内容（バイナリデータ）
-             */
-            $binary = file_get_contents($file->getRealPath());
+            return response()->json([
+                'message' => '画像の保存に失敗しました。ファイルサイズを小さくしてお試しください。',
+            ], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Profile update error: ' . $e->getMessage());
             
-            // DBに保存
-            $user->avatar = $binary;
-            $user->avatar_mime = $file->getMimeType(); // MIME typeも保存
+            return response()->json([
+                'message' => 'プロフィールの更新に失敗しました',
+            ], 500);
         }
-
-        $user->save();
-
-        return response()->json([
-            'message' => 'プロフィールを更新しました',
-            'user' => $user,
-        ]);
     }
 
     /**
