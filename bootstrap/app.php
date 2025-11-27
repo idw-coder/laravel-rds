@@ -30,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             // \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
+
+        // ミドルウェアのエイリアス登録、middleware('admin')で使用
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

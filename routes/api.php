@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\AdminUserController;
 
 // テスト用ルート
 Route::get('/test', function () {
@@ -44,4 +45,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile', [UserController::class, 'update']);
 
     Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
+});
+
+// 管理者専用ルート（認証 + adminロール必須）
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/users', [AdminUserController::class, 'index']);          // ユーザー一覧
+    Route::delete('/users/{id}', [AdminUserController::class, 'destroy']); // ユーザー削除
+    Route::post('/users/{id}/restore', [AdminUserController::class, 'restore']); // ユーザー復元
 });

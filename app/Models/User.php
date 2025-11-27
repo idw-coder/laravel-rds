@@ -8,18 +8,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Role;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
     /**
      * トレイトの有効化
+     * （既にAuthenticatableを継承しているため、PHPは1つのクラスしか継承できないため、トレイトを使用）
      * HasApiTokens: APIトークンの生成・管理機能を提供（Sanctum）
      * HasFactory: モデルファクトリー機能を提供
      * Notifiable: 通知機能を提供（メール通知など）
+     * SoftDeletes: 論理削除機能を提供
      * 
      * @use HasFactory<\Database\Factories\UserFactory>
      */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.

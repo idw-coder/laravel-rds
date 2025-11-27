@@ -19,6 +19,12 @@ Laravelはvendor/に数千〜数万のファイルがあり、それを頻繁に
 ・技術スタック: PHP 8.3、Laravel 12.x、MySQL 8.0
 ・リポジトリ: `git@github.com:idw-coder/laravel-rds.git`
 
+### ページ、機能
+- 投稿記事CLUD
+- タイピングゲーム
+- エンジニア系YouTubeチャンネルレビューページ（途中まで）
+- エンジニア書籍レビューページ（途中まで）
+
 ### ユーザー認証
 Sanctum とGoogoleOAuth
 
@@ -895,6 +901,31 @@ database\factories\UserFactory.phpを修正
 .env.testingを作成
 
 
+### Admin用Middlewareの作成し、管理画面でのユーザーのソフトデリート
+
+
+#### Admin用Middlewareの作成 
+（LaravelのMiddlewareとはHTTPリクエストの「フィルター」のようなものです。）
+
+UserモデルにSoftDeletesを追加（既にAuthenticatableを継承しているため、PHPは1つのクラスしか継承できないため、トレイトを使用）
+
+マイグレーションファイルの作成
+```bash
+./vendor/bin/sail artisan make:migration add_deleted_at_to_users_table --table=users
+./vendor/bin/sail artisan migrate
+```
+
+Admin用Middlewareの作成
+```bash
+./vendor/bin/sail artisan make:middleware AdminMiddleware
+```
+bootstrap/app.phpにミドルウェアの登録
+
+AdminUserControllerの作成
+```bash
+./vendor/bin/sail artisan make:controller Api/AdminUserController
+```
+routes\api.phpにルートの登録
 
 
 
@@ -936,7 +967,9 @@ Intervention Image ライブラリを使った画像処理
 - JSON ⇔ TypeScript 型定義 変換ツール
 開発中によくある「APIから返ってきたJSONデータを、TypeScriptのinterfaceに書き換えるのが面倒くさい」という悩みを解決するツールです。
 
-プログラミング言語特化のタイピングゲーム
+- 「エンジニアの学習を支援するサービス」
+技術書レビュー → インプットの記録・共有
+タイピングゲーム → アウトプット・スキル練習
 
 ---
 
