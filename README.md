@@ -907,7 +907,7 @@ database\factories\UserFactory.phpを修正
 #### Admin用Middlewareの作成 
 （LaravelのMiddlewareとはHTTPリクエストの「フィルター」のようなものです。）
 
-UserモデルにSoftDeletesを追加（既にAuthenticatableを継承しているため、PHPは1つのクラスしか継承できないため、トレイトを使用）
+UserモデルにSoftDeletesを追加（既にAuthenticatableを継承しており、PHPは1つのクラスしか継承できないため、トレイトを使用）
 
 マイグレーションファイルの作成
 ```bash

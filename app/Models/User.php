@@ -19,6 +19,9 @@ class User extends Authenticatable
      * HasFactory: モデルファクトリー機能を提供
      * Notifiable: 通知機能を提供（メール通知など）
      * SoftDeletes: 論理削除機能を提供
+     * - delete()を上書き: 物理削除ではなくdeleted_atに日付を設定
+     * - 自動フィルター: User::all()などで削除済みレコードを自動除外
+     * - restore()メソッド追加: deleted_atをNULLに戻して復元可能
      * 
      * @use HasFactory<\Database\Factories\UserFactory>
      */

@@ -47,9 +47,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
 });
 
-// 管理者専用ルート（認証 + adminロール必須）
-Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
-    Route::get('/users', [AdminUserController::class, 'index']);          // ユーザー一覧
-    Route::delete('/users/{id}', [AdminUserController::class, 'destroy']); // ユーザー削除
-    Route::post('/users/{id}/restore', [AdminUserController::class, 'restore']); // ユーザー復元
+/**
+ * 管理者専用ルート（認証 + adminロール必須）
+ */
+Route::middleware(['auth:sanctum', 'admin'])
+    ->prefix('admin') // グループ内のすべてのルートに '/admin' プレフィックスを追加
+    ->group(function () {
+        Route::get('/users', [AdminUserController::class, 'index']); // ユーザー一覧取得
+        Route::delete('/users/{id}', [AdminUserController::class, 'destroy']); // ユーザー削除（ソフトデリート）
+        Route::post('/users/{id}/restore', [AdminUserController::class, 'restore']); // ユーザー復元
 });
