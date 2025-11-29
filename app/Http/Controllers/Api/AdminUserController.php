@@ -39,6 +39,16 @@ class AdminUserController extends Controller
             return response()->json(['message' => '自分自身は削除できません'], 400);
         }
 
+        /*
+         * delete()メソッドについて
+         * そもそもはdelete()メソッドは物理削除であり、論理削除ではありませんでした
+         * 
+         * これはUserクラスはIlluminate\Foundation\Auth\User（Illuminate\Database\Eloquent\Modelを継承しており、
+         * そこで元々提供されていたdelete()メソッドは物理削除でした。
+         * ↓
+         * SoftDeletesトレイトを使用することで、delete()メソッドの挙動が論理削除に変わります。
+         * 具体的には、データを削除ではなくdeleted_atに日付をいれる動作になります。
+         */
         $user->delete();
 
         return response()->json(['message' => 'ユーザーを削除しました']);

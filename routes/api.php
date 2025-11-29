@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\BookReviewController;
 
 // テスト用ルート
 Route::get('/test', function () {
@@ -33,6 +34,9 @@ Route::get('/avatar/{userId}', [UserController::class, 'getAvatar']);
  */
 Route::apiResource('posts', PostController::class)->only(['index', 'show']);
 
+// 書籍レビュー（認証不要：一覧・詳細）
+Route::apiResource('book-reviews', BookReviewController::class)->only(['index', 'show']);
+
 // 認証が必要なルート、Sanctum 認証でトークンが有効な場合はルート処理、無効な場合は401エラー
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
@@ -45,6 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile', [UserController::class, 'update']);
 
     Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
+
+    // 書籍レビュー（認証不要：作成・更新・削除）
+    Route::apiResource('book-reviews', BookReviewController::class)->only(['store', 'update', 'destroy']);
 });
 
 /**

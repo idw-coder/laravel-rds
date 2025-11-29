@@ -50,4 +50,16 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rakuten Books API
+    |--------------------------------------------------------------------------
+    |
+    | Rakuten Books APIのAPIキーを設定します。
+    |
+    */
+    'rakuten_books_app_id' => [
+        'app_id' => env('RAKUTEN_APP_ID'),
+    ],
 ];

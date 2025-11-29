@@ -55,19 +55,21 @@ class UserController extends Controller
             }
             // アバターアップロードの処理
             elseif ($request->hasFile('avatar')) {
+
+                // $fileはオブジェクト（主なプロパティはファイルパス、ファイル名、ファイルサイズ、ファイルタイプ、ファイルパスなど）
                 $file = $request->file('avatar');
                 
-                // バイナリデータとして読み込み
                 /**
                  * file_get_contents: ファイルの内容を文字列として読み込む
                  * @param string $filename ファイルパス
                  * @return string ファイルの内容（バイナリデータ）
                  */
                 $binary = file_get_contents($file->getRealPath());
+                // PHPではバイナリデータは文字列データstringで扱う、JavaScriptではBufferで扱う
                 
                 // DBに保存
                 $user->avatar = $binary;
-                $user->avatar_mime = $file->getMimeType(); // MIME typeも保存
+                $user->avatar_mime = $file->getMimeType(); // MIME typeも保存（HTTPレスポンスのContent-Typeヘッダーで使用）
             }
 
             $user->save();
