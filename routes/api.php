@@ -37,6 +37,10 @@ Route::apiResource('posts', PostController::class)->only(['index', 'show']);
 // 書籍レビュー（認証不要：一覧・詳細）
 Route::apiResource('book-reviews', BookReviewController::class)->only(['index', 'show']);
 
+// 共同編集ドキュメント（認証不要）
+Route::get('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentController::class, 'show']);
+Route::post('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentController::class, 'update']);
+
 // 認証が必要なルート、Sanctum 認証でトークンが有効な場合はルート処理、無効な場合は401エラー
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {

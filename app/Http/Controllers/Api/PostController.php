@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
-
+use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller
 {
@@ -41,20 +41,27 @@ class PostController extends Controller
         
         $currentUserId = $user?->id;
 
-        $posts = Post::with('user') // ユーザー情報も一緒に取得（N+1問題の回避）
+        $query = Post::with('user')
             ->where(function ($query) use ($currentUserId) {
-                // 公開記事は常に表示
                 $query->where('status', 'published');
                 
-                // ログインしている場合は、自分の投稿（下書き含む）も表示
                 if ($currentUserId) {
                     $query->orWhere('user_id', $currentUserId);
                 }
             })
-            ->latest() // 新しい順に並べる（created_at DESC）
-            ->get();
+            ->latest();
 
-        return $posts;
+        // SQLデバッグ（確認後はコメントアウト）
+        // dd($query->toRawSql());
+
+
+        // SQLをログに出力
+        // Log::info([
+        //     'file' => __FILE__,
+        //     'sql' => $query->toRawSql(),
+        // ]);
+
+        return $query->get();
     }
 
     // 作成
