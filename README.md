@@ -966,6 +966,14 @@ APIレスポンス比較
 app\Services\BookSearchService.phpの作成
 Laravelでコマンドが用意されていないので手動で作成
 
+### WebSocket（Laravel Reverb）導入
+
+```php
+./vendor/bin/sail composer require laravel/reverb
+php artisan reverb:install
+php artisan install:broadcasting
+```
+
 
 ## プロジェクト方針と戦略策定
 
