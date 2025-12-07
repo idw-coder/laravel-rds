@@ -27,8 +27,15 @@ services:
             - meilisearch
             - mailpit
             - selenium
+            
+    # MySQLデータベースサービス
+    # 公式イメージではなくカスタムDockerfileを使用してビルド
+    # これにより、追加の設定やプラグイン（例：文字コード設定、タイムゾーン等）のカスタマイズが可能
     mysql:
-        image: 'mysql/mysql-server:5.7'
+        # image: 'mysql/mysql-server:5.7'  # 公式イメージを直接使用する場合はこちらを有効化
+        build:
+            context: './docker/mysql'      # Dockerfileが格納されているディレクトリ
+            dockerfile: Dockerfile         # 使用するDockerfileの名前
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         command: --max_allowed_packet=64M # プロフィール画像アップロード時のエラー対策

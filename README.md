@@ -966,6 +966,14 @@ APIレスポンス比較
 app\Services\BookSearchService.phpの作成
 Laravelでコマンドが用意されていないので手動で作成
 
+### Docker SailのMySQLコンテナにカスタム設定を反映させる
+```bash
+mkdir -p docker/mysql
+```
+docker/mysql/my.cnfを作成
+
+
+
 ### WebSocket（Laravel Reverb）導入
 
 ```php
