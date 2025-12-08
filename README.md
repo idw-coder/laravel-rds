@@ -971,6 +971,26 @@ Laravelでコマンドが用意されていないので手動で作成
 mkdir -p docker/mysql
 ```
 docker/mysql/my.cnfを作成
+docker/mysql/Dockerfileを作成
+compose.yamlを修正
+
+### MySQL（Dockerコンテナ）のバージョンアップ
+
+リリースノート確認
+mysqldumpでバックアップ
+```bash
+mysqldump: [Warning] Using a password on the command line interface can be insecure.
+bash-4.4# ls
+backup_20251207.sql  boot  docker-entrypoint-initdb.d  etc   lib    media  opt   root  sbin  sys  usr
+bin                  dev   entrypoint.sh               home  lib64  mnt    proc  run   srv   tmp  var
+bash-4.4#
+```
+
+```bash
+./vendor/bin/sail down
+./vendor/bin/sail build --no-cache mysql
+./vendor/bin/sail build up -d
+```
 
 
 

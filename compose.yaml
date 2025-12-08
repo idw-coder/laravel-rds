@@ -40,6 +40,7 @@ services:
             - '${FORWARD_DB_PORT:-3306}:3306'
         command: --max_allowed_packet=64M # プロフィール画像アップロード時のエラー対策
         environment:
+            TZ: 'Asia/Tokyo'
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ROOT_HOST: '%'
             MYSQL_DATABASE: '${DB_DATABASE}'
