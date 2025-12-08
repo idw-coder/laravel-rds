@@ -34,4 +34,22 @@ class Post extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * 指定日数以上更新されていない下書きを取得するクエリスコープ
+     * 
+     * 使い方: Post::oldDrafts(30)->get()
+     * 
+     * クエリスコープ：再利用可能なクエリ条件をメソッドとして定義する機能
+     * scope + メソッド名（先頭大文字）で定義し、呼び出し時は小文字で使用
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query クエリビルダー
+     * @param int $days 経過日数（デフォルト30日）
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeOldDrafts($query, int $days = 30)
+    {
+        return $query->where('status', 'draft')
+                     ->where('updated_at', '<', now()->subDays($days));
+    }
 }
