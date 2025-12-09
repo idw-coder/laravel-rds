@@ -9,19 +9,40 @@ use Illuminate\Database\Eloquent\Collection;
 class PostService
 {
     /**
-     * 投稿一覧を取得（公開済み + 自分の投稿）
+     * ユーザーがadminロールを持っているかチェック
      *
-     * @param int|null $currentUserId
+     * @param User|null $user
+     * @return bool
+     */
+    private function isAdmin(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+        return $user->roles->contains('name', 'admin');
+    }
+
+    /**
+     * 投稿一覧を取得（公開済み + 自分の投稿、adminは全投稿）
+     *
+     * @param User|null $currentUser
      * @return Collection
      */
-    public function getPostsList(?int $currentUserId = null): Collection
+    public function getPostsList(?User $currentUser = null): Collection
     {
-        return Post::with('user')
-            ->where(function ($query) use ($currentUserId) {
-                $query->where('status', 'published');
+        $query = Post::with('user');
+
+        // adminは全投稿を取得可能
+        if ($this->isAdmin($currentUser)) {
+            return $query->latest()->get();
+        }
+
+        return $query
+            ->where(function ($q) use ($currentUser) {
+                $q->where('status', 'published');
                 
-                if ($currentUserId) {
-                    $query->orWhere('user_id', $currentUserId);
+                if ($currentUser) {
+                    $q->orWhere('user_id', $currentUser->id);
                 }
             })
             ->latest()
@@ -44,18 +65,23 @@ class PostService
      * 投稿の閲覧権限をチェック
      *
      * @param Post $post
-     * @param int|null $currentUserId
+     * @param User|null $currentUser
      * @return bool
      */
-    public function canViewPost(Post $post, ?int $currentUserId = null): bool
+    public function canViewPost(Post $post, ?User $currentUser = null): bool
     {
         // 公開済みは誰でも閲覧可能
         if ($post->status === 'published') {
             return true;
         }
 
+        // adminは全て閲覧可能
+        if ($this->isAdmin($currentUser)) {
+            return true;
+        }
+
         // 下書きは自分のもののみ閲覧可能
-        return $post->user_id === $currentUserId;
+        return $currentUser && $post->user_id === $currentUser->id;
     }
 
     /**
@@ -83,15 +109,21 @@ class PostService
     }
 
     /**
-     * 投稿の所有者かチェック
+     * 投稿の管理権限をチェック（所有者またはadmin）
      *
      * @param Post $post
-     * @param int $userId
+     * @param User $user
      * @return bool
      */
-    public function isOwner(Post $post, int $userId): bool
+    public function canManagePost(Post $post, User $user): bool
     {
-        return $post->user_id === $userId;
+        // adminは全投稿を管理可能
+        if ($this->isAdmin($user)) {
+            return true;
+        }
+
+        // 所有者は自分の投稿を管理可能
+        return $post->user_id === $user->id;
     }
 
     /**

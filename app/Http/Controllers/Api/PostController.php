@@ -28,7 +28,7 @@ class PostController extends Controller
         return null;
     }
 
-    private function getCurrentUserId(Request $request): ?int
+    private function getCurrentUser(Request $request)
     {
         $user = $request->user();
         
@@ -40,13 +40,14 @@ class PostController extends Controller
             }
         }
         
-        return $user?->id;
+        // rolesをロードして返す
+        return $user?->load('roles');
     }
     
     public function index(Request $request)
     {
-        $currentUserId = $this->getCurrentUserId($request);
-        return $this->postService->getPostsList($currentUserId);
+        $currentUser = $this->getCurrentUser($request);
+        return $this->postService->getPostsList($currentUser);
     }
 
     public function store(Request $request)
@@ -61,9 +62,9 @@ class PostController extends Controller
 
     public function show(Request $request, Post $post)
     {
-        $currentUserId = $this->getCurrentUserId($request);
+        $currentUser = $this->getCurrentUser($request);
         
-        if (!$this->postService->canViewPost($post, $currentUserId)) {
+        if (!$this->postService->canViewPost($post, $currentUser)) {
             abort(403, 'この投稿を閲覧する権限がありません。');
         }
         
@@ -76,7 +77,8 @@ class PostController extends Controller
             return $res;
         }
 
-        if (!$this->postService->isOwner($post, $request->user()->id)) {
+        $user = $request->user()->load('roles');
+        if (!$this->postService->canManagePost($post, $user)) {
             abort(403, '更新権限がありません。');
         }
 
@@ -90,7 +92,8 @@ class PostController extends Controller
             return $res;
         }
 
-        if (!$this->postService->isOwner($post, $request->user()->id)) {
+        $user = $request->user()->load('roles');
+        if (!$this->postService->canManagePost($post, $user)) {
             abort(403, '削除権限がありません。');
         }
 

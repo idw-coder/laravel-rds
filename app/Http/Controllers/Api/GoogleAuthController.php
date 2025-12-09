@@ -70,7 +70,13 @@ class GoogleAuthController extends Controller
             $authToken = $user->createToken('sanctum-api-token')->plainTextToken;
 
             return response()->json([
-                'user' => $user->load('roles'), // 付与ロールも返す
+                // 他のログインAPIと形式を統一
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->roles->pluck('name'),
+                ],
                 'authToken' => $authToken
             ]);
         } catch (\Exception $e) {
