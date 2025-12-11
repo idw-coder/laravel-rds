@@ -11,6 +11,8 @@ services:
         ports:
             - '${APP_PORT:-80}:80'
             # - '${VITE_PORT:-5173}:${VITE_PORT:-5173}' フロントエンドを別で実行
+
+            - '${REVERB_PORT:-8080}:8080' # Reverbサーバーのポート
         environment:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1

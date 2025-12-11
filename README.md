@@ -1026,6 +1026,16 @@ WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank 
 app/Events/SharedDocumentUpdated.php が作成されます
 WebSocketでブロードキャストするイベントクラス
 
+
+Vue側で
+```bash
+npm install --save laravel-echo pusher-js
+```
+Vue側で環境変数.env、src\vite-env.d.tsを記述
+
+
+
+
 ## プロジェクト方針と戦略策定
 
 1.  **ポートフォリオとしての活用**

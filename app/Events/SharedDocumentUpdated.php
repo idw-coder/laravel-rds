@@ -4,7 +4,7 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // ブロードキャストを即時に行うためのインターフェース
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -20,7 +20,7 @@ use Illuminate\Queue\SerializesModels;
  *   // または
  *   SharedDocumentUpdated::dispatch($roomId, $content);
  */
-class SharedDocumentUpdated implements ShouldBroadcast
+class SharedDocumentUpdated implements ShouldBroadcastNow
 {
     // Dispatchable: イベントのディスパッチを簡単にするヘルパーメソッドを提供
     // InteractsWithSockets: ソケット接続との相互作用を管理
