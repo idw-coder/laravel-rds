@@ -999,9 +999,32 @@ bash-4.4#
 ```php
 ./vendor/bin/sail composer require laravel/reverb
 php artisan reverb:install
+
+ ┌ Would you like to enable the Reverb broadcasting driver? ────┐
+ │ Yes                                                          │
+ └──────────────────────────────────────────────────────────────┘
+
+   INFO  Reverb installed successfully.
+
+
 php artisan install:broadcasting
 ```
 
+別のターミナルでReverbサーバーを起動
+```php
+wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail artisan reverb:start
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
+
+   INFO  Starting server on 0.0.0.0:8080 (localhost).
+```
+
+
+```bash
+./vendor/bin/sail artisan make:event SharedDocumentUpdated
+```
+app/Events/SharedDocumentUpdated.php が作成されます
+WebSocketでブロードキャストするイベントクラス
 
 ## プロジェクト方針と戦略策定
 
@@ -1055,64 +1078,4 @@ URLのユニークなID生成管理、**リアルタイム通信（WebSocketな�
 タイピングゲーム → アウトプット・スキル練習
 
 ---
-
-
-## TODO
-
-
-
-### APIのエラーハンドリングとレスポンス形式
-
-ルート一覧を確認
-```bash
-wida@LAPTOP-2C4PL9J8:~/dev/laravel-rds$ ./vendor/bin/sail artisan route:list
-WARN[0001] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
-WARN[0000] The "MYSQL_EXTRA_OPTIONS" variable is not set. Defaulting to a blank string.
-
-  GET|HEAD        / ..........................................................................................................................
-  GET|HEAD        api/auth/google .................................................................. Api\GoogleAuthController@redirectToGoogle
-  GET|HEAD        api/auth/google/callback ..................................................... Api\GoogleAuthController@handleGoogleCallback
-  POST            api/login ................................................................................. login › Api\AuthController@login
-  POST            api/logout ....................................................................................... Api\AuthController@logout
-  GET|HEAD        api/posts ........................................................................... posts.index › Api\PostController@index
-  POST            api/posts ........................................................................... posts.store › Api\PostController@store
-  GET|HEAD        api/posts/{post} ...................................................................... posts.show › Api\PostController@show
-  PUT|PATCH       api/posts/{post} .................................................................. posts.update › Api\PostController@update
-  DELETE          api/posts/{post} ................................................................ posts.destroy › Api\PostController@destroy
-  GET|HEAD        api/profile ........................................................................................ Api\UserController@show
-  PUT             api/profile ...................................................................................... Api\UserController@update
-  GET|HEAD        api/test ...................................................................................................................
-  GET|HEAD        api/user ...................................................................................................................
-  GET|HEAD        sanctum/csrf-cookie ...................................... sanctum.csrf-cookie › Laravel\Sanctum › CsrfCookieController@show
-  GET|HEAD        storage/{path} ............................................................................................... storage.local
-  GET|HEAD        up .........................................................................................................................
-
-                                                                                                                           Showing [17] routes
-```
-
-上記について表にまとめると
-
-<div style="font-size: 85%;">
-
-| メソッド | URI | ルート名（識別子） | コントローラーのメソッド名 | コントローラー（クラス） |
-|---------|-----|-------------------|-------------------------|----------------------|
-| GET\|HEAD | / | - | - | - |
-| GET\|HEAD | api/auth/google | - | redirectToGoogle | Api\GoogleAuthController |
-| GET\|HEAD | api/auth/google/callback | - | handleGoogleCallback | Api\GoogleAuthController |
-| POST | api/login | login | login | Api\AuthController |
-| POST | api/logout | - | logout | Api\AuthController |
-| GET\|HEAD | api/posts | posts.index | index | Api\PostController |
-| POST | api/posts | posts.store | store | Api\PostController |
-| GET\|HEAD | api/posts/{post} | posts.show | show | Api\PostController |
-| PUT\|PATCH | api/posts/{post} | posts.update | update | Api\PostController |
-| DELETE | api/posts/{post} | posts.destroy | destroy | Api\PostController |
-| GET\|HEAD | api/profile | - | show | Api\UserController |
-| PUT | api/profile | - | update | Api\UserController |
-| GET\|HEAD | api/test | - | - | - |
-| GET\|HEAD | api/user | - | - | - |
-| GET\|HEAD | sanctum/csrf-cookie | sanctum.csrf-cookie | show | Laravel\Sanctum\CsrfCookieController |
-| GET\|HEAD | storage/{path} | storage.local | - | - |
-| GET\|HEAD | up | - | - | - |
-
-</div>
 
