@@ -1034,6 +1034,49 @@ npm install --save laravel-echo pusher-js
 Vue側で環境変数.env、src\vite-env.d.tsを記述
 
 
+#### 本番にデプロイ
+
+Laravel側の環境変数の追記、修正
+
+##### Supervisor使用
+
+Reverbサーバーが継続的に稼働していることを確認するには、Supervisorなどのプロセスマネージャーを使用する必要があります。
+https://laravel.com/docs/12.x/reverb
+
+インストール
+```bash
+sudo apt update
+sudo apt install supervisor -y
+```
+
+設定ファイルの作成、確認
+
+```bash
+ubuntu@ip-172-26-2-247:~$ sudo vi /etc/supervisor/conf.d/laravel-reverb.conf
+ubuntu@ip-172-26-2-247:~$ cat /etc/supervisor/conf.d/laravel-reverb.conf 
+[program:laravel-reverb]
+process_name=%(program_name)s
+command=php /var/www/laravel/artisan reverb:start --host=0.0.0.0 --port=8080
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/laravel/storage/logs/reverb.log
+stopwaitsecs=3600
+ubuntu@ip-172-26-2-247:~$ sudo supervisorctl reread
+laravel-reverb: available
+ubuntu@ip-172-26-2-247:~$ sudo supervisorctl update
+laravel-reverb: added process group
+ubuntu@ip-172-26-2-247:~$ sudo supervisorctl status
+laravel-reverb                   RUNNING   pid 19354, uptime 0:00:10
+```
+
+
+
+
 
 
 ## プロジェクト方針と戦略策定
