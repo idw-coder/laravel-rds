@@ -1033,6 +1033,56 @@ npm install --save laravel-echo pusher-js
 ```
 Vue側で環境変数.env、src\vite-env.d.tsを記述
 
+```mermaid
+
+flowchart TB
+    subgraph Browser["ブラウザ (app.bizlabo.site)"]
+        UserA["👤 ユーザーA<br/><small>文章編集</small>"]
+        UserB["👤 ユーザーB<br/><small>閲覧中</small>"]
+    end
+    
+    subgraph Nginx["Nginx (api.bizlabo.site:443)"]
+        NginxAPI["<small>/api/*</small><br/>→ PHP-FPM"]
+        NginxWS["<small>/app/*</small><br/>→ Reverb"]
+    end
+    
+    subgraph Laravel["Laravel (PHP-FPM)"]
+        API["<small>SharedDocument<br/>Controller</small>"]
+        Broadcast["<small>broadcast()<br/>イベント発火</small>"]
+    end
+    
+    subgraph Reverb["Reverb WebSocket<br/><small>(Supervisor管理)</small>"]
+        ReverbServer["<small>0.0.0.0:6000<br/>待受</small>"]
+    end
+    
+    subgraph DB["MySQL"]
+        SharedDocs["<small>shared_documents<br/>テーブル</small>"]
+    end
+    
+    UserA -->|"<small>①POST /api/documents/{id}<br/>保存リクエスト</small>"| NginxAPI
+    UserB -.->|"<small>②wss://api.bizlabo.site:443/app<br/>WebSocket接続維持</small>"| NginxWS
+    
+    NginxAPI -->|"<small>③PHP処理</small>"| API
+    NginxWS -.->|"<small>④プロキシ<br/>localhost:6000</small>"| ReverbServer
+    
+    API -->|"<small>⑤DB保存</small>"| SharedDocs
+    API -->|"<small>⑥broadcast()<br/>http://127.0.0.1:6000</small>"| Broadcast
+    
+    Broadcast -->|"<small>⑦イベント送信<br/>HTTP</small>"| ReverbServer
+    ReverbServer -.->|"<small>⑧リアルタイム配信<br/>WebSocket</small>"| UserB
+    
+    style UserA fill:#e1f5ff
+    style UserB fill:#e1f5ff
+    style NginxAPI fill:#fff4e6
+    style NginxWS fill:#fff4e6
+    style API fill:#f3e5f5
+    style Broadcast fill:#f3e5f5
+    style ReverbServer fill:#e8f5e9
+    style SharedDocs fill:#fce4ec
+    
+    classDef smallText font-size:10px
+```
+
 
 #### 本番にデプロイ
 
