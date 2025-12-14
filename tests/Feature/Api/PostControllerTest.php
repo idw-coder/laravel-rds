@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Post;
@@ -51,5 +53,65 @@ class PostControllerTest extends TestCase
         // 検証: 自分の3つ + 他人の公開1つ = 4つ
         $response->assertStatus(200);
         $response->assertJsonCount(4);
+    }
+
+    /**
+     * 画像アップロードテスト（認証済みユーザー）
+     */
+    public function test_can_upload_post_image(): void
+    {
+        Storage::fake('public'); // テスト用のfakeストレージを使用
+
+        $user = User::factory()->withRole('paid')->create();
+        
+        $image = UploadedFile::fake()->image('test-image.jpg', 100, 100);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/posts/images', [
+                'image' => $image,
+            ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonStructure([
+            'url',
+            'path',
+        ]);
+
+        // ファイルが保存されているか確認
+        $this->assertTrue(Storage::disk('public')->exists($response->json('path')));
+    }
+
+    /**
+     * 未認証ユーザーは画像アップロードできない
+     */
+    public function test_guest_cannot_upload_image(): void
+    {
+        $image = UploadedFile::fake()->image('test-image.jpg', 100, 100);
+
+        $response = $this->postJson('/api/posts/images', [
+            'image' => $image,
+        ]);
+
+        $response->assertStatus(401);
+    }
+
+    /**
+     * 権限のないユーザーは画像アップロードできない
+     */
+    public function test_user_without_permission_cannot_upload_image(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create(); // ロールなしユーザー
+        
+        $image = UploadedFile::fake()->image('test-image.jpg', 100, 100);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/posts/images', [
+                'image' => $image,
+            ]);
+
+        $response->assertStatus(403);
+        $response->assertJson(['message' => 'この操作を行う権限がありません']);
     }
 }

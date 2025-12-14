@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Services\PostService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class PostController extends Controller
@@ -99,5 +100,38 @@ class PostController extends Controller
 
         $this->postService->deletePost($post);
         return response()->json(null, 204);
+    }
+
+    /**
+     * 投稿用画像をアップロード
+     * 
+     * 画像は storage/app/public/posts に保存され、公開フォルダとして扱われます。
+     * 返却されるURL（asset('storage/' . $path)）に直接アクセスすることで画像を取得できます。
+     * そのため、画像取得用のAPIエンドポイントは不要です。
+     * 
+     * フロントエンドでは、返却された url をそのまま <img src={url}> で使用できます。
+     * 
+     * 注意: シンボリックリンク（php artisan storage:link）が作成されている必要があります。
+     */
+    public function uploadImage(Request $request)
+    {
+        if ($res = $this->authorizePost($request)) {
+            return $res;
+        }
+
+        $validated = $request->validate([
+            'image' => 'required|file|image|max:5120', // 5MB以下
+        ]);
+
+        $file = $request->file('image');
+        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('posts', $filename, 'public');
+
+        $url = asset('storage/' . $path);
+
+        return response()->json([
+            'url' => $url,
+            'path' => $path,
+        ], 201);
     }
 }

@@ -53,6 +53,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile', [UserController::class, 'update']);
 
     Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
+    
+    // 投稿用画像アップロード
+    Route::post('/posts/images', [PostController::class, 'uploadImage']);
 
     // 書籍レビュー（認証不要：作成・更新・削除）
     Route::apiResource('book-reviews', BookReviewController::class)->only(['store', 'update', 'destroy']);
