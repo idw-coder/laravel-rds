@@ -136,8 +136,102 @@ class PostService
      */
     public function updatePost(Post $post, array $data): Post
     {
+        // contentが更新される場合、削除された画像ファイルを削除
+        if (isset($data['content']) && $data['content'] !== $post->content) {
+            $this->deleteUnusedImages($post, $data['content']);
+        }
+        
         $post->update($data);
         return $post->fresh('user');
+    }
+
+    /**
+     * contentから削除された画像ファイルを削除
+     *
+     * @param Post $post
+     * @param string $newContent
+     * @return void
+     */
+    private function deleteUnusedImages(Post $post, string $newContent): void
+    {
+        // 古いcontentから画像URLを抽出
+        $oldImageUrls = $this->extractImageUrls($post->content);
+        
+        // 新しいcontentから画像URLを抽出
+        $newImageUrls = $this->extractImageUrls($newContent);
+        
+        // 削除された画像URLを特定
+        $deletedUrls = array_diff($oldImageUrls, $newImageUrls);
+        
+        // 削除された画像ファイルを削除
+        foreach ($deletedUrls as $url) {
+            // 投稿フォルダ（posts/{postId}/）内の画像のみを対象
+            if (preg_match('/\/storage\/posts\/' . $post->id . '\/([^\/]+)$/', $url, $fileMatch)) {
+                $filename = $fileMatch[1];
+                $filePath = "posts/{$post->id}/{$filename}";
+                
+                // ファイルが存在し、他の投稿で使われていない場合のみ削除
+                if (Storage::disk('public')->exists($filePath)) {
+                    // 他の投稿で使われているかチェック
+                    $isUsedInOtherPosts = Post::where('id', '!=', $post->id)
+                        ->where('content', 'like', '%' . $filename . '%')
+                        ->exists();
+                    
+                    if (!$isUsedInOtherPosts) {
+                        Storage::disk('public')->delete($filePath);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * contentから画像URLを抽出
+     *
+     * @param string $content
+     * @return array
+     */
+    private function extractImageUrls(string $content): array
+    {
+        $urls = [];
+        // Markdown形式の画像URLを抽出: ![alt](url)
+        preg_match_all('/!\[.*?\]\((.*?)\)/', $content, $matches);
+        
+        foreach ($matches[1] as $url) {
+            $urls[] = $url;
+        }
+        
+        return $urls;
+    }
+
+    /**
+     * 画像ファイルを削除
+     *
+     * @param Post $post
+     * @param string $filename
+     * @return bool
+     */
+    public function deleteImage(Post $post, string $filename): bool
+    {
+        $filePath = "posts/{$post->id}/{$filename}";
+        
+        // ファイルが存在しない場合はfalseを返す
+        if (!Storage::disk('public')->exists($filePath)) {
+            return false;
+        }
+        
+        // 他の投稿で使われているかチェック
+        $isUsedInOtherPosts = Post::where('id', '!=', $post->id)
+            ->where('content', 'like', '%' . $filename . '%')
+            ->exists();
+        
+        // 他の投稿で使われている場合は削除しない
+        if ($isUsedInOtherPosts) {
+            return false;
+        }
+        
+        // ファイルを削除
+        return Storage::disk('public')->delete($filePath);
     }
 
     /**

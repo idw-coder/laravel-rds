@@ -171,4 +171,34 @@ class PostController extends Controller
             'path' => $path,
         ], 201);
     }
+
+    /**
+     * 投稿の画像を削除
+     * 
+     * 画像ファイルを削除します。
+     * 他の投稿で使われている画像は削除されません。
+     */
+    public function deleteImage(Request $request, Post $post, string $filename)
+    {
+        if ($res = $this->authorizePost($request)) {
+            return $res;
+        }
+
+        $user = $request->user()->load('roles');
+        if (!$this->postService->canManagePost($post, $user)) {
+            abort(403, 'この投稿の画像を削除する権限がありません。');
+        }
+
+        $deleted = $this->postService->deleteImage($post, $filename);
+        
+        if (!$deleted) {
+            return response()->json([
+                'message' => '画像の削除に失敗しました。ファイルが存在しないか、他の投稿で使用されています。',
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => '画像を削除しました。',
+        ], 200);
+    }
 }
