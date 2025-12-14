@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class PostService
 {
@@ -58,7 +59,49 @@ class PostService
      */
     public function createPost(User $user, array $data): Post
     {
-        return $user->posts()->create($data);
+        $post = $user->posts()->create($data);
+        
+        // contentから一時フォルダの画像を検出して移動
+        $this->moveTempImagesToPost($post, $data['content'] ?? '');
+        
+        return $post;
+    }
+
+    /**
+     * content内の一時フォルダの画像を投稿フォルダに移動
+     *
+     * @param Post $post
+     * @param string $content
+     * @return void
+     */
+    private function moveTempImagesToPost(Post $post, string $content): void
+    {
+        // Markdown形式の画像URLを抽出: ![alt](url)
+        preg_match_all('/!\[.*?\]\((.*?)\)/', $content, $matches);
+        
+        foreach ($matches[1] as $url) {
+            // URLからパスを抽出: http://localhost/storage/posts/temp/filename.jpg
+            if (preg_match('/\/storage\/posts\/temp\/([^\/]+)$/', $url, $fileMatch)) {
+                $filename = $fileMatch[1];
+                $tempPath = "posts/temp/{$filename}";
+                $newPath = "posts/{$post->id}/{$filename}";
+                
+                // 一時フォルダにファイルが存在する場合のみ移動
+                if (Storage::disk('public')->exists($tempPath)) {
+                    Storage::disk('public')->move($tempPath, $newPath);
+                    
+                    // content内のURLも更新
+                    $oldUrl = $url;
+                    $newUrl = asset('storage/' . $newPath);
+                    $post->content = str_replace($oldUrl, $newUrl, $post->content);
+                }
+            }
+        }
+        
+        // URLが更新された場合は保存
+        if ($post->isDirty('content')) {
+            $post->save();
+        }
     }
 
     /**
@@ -105,6 +148,12 @@ class PostService
      */
     public function deletePost(Post $post): ?bool
     {
+        // 投稿に紐づく画像フォルダを削除
+        $imageDir = "posts/{$post->id}";
+        if (Storage::disk('public')->exists($imageDir)) {
+            Storage::disk('public')->deleteDirectory($imageDir);
+        }
+        
         return $post->delete();
     }
 

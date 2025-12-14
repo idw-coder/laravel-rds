@@ -103,11 +103,11 @@ class PostController extends Controller
     }
 
     /**
-     * 投稿用画像をアップロード
+     * 投稿用画像をアップロード（新規作成時用：一時フォルダに保存）
      * 
-     * 画像は storage/app/public/posts に保存され、公開フォルダとして扱われます。
+     * 画像は storage/app/public/posts/temp に一時保存されます。
+     * 投稿作成時に posts/{postId}/ に移動されます。
      * 返却されるURL（asset('storage/' . $path)）に直接アクセスすることで画像を取得できます。
-     * そのため、画像取得用のAPIエンドポイントは不要です。
      * 
      * フロントエンドでは、返却された url をそのまま <img src={url}> で使用できます。
      * 
@@ -125,7 +125,44 @@ class PostController extends Controller
 
         $file = $request->file('image');
         $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('posts', $filename, 'public');
+        $path = $file->storeAs('posts/temp', $filename, 'public');
+
+        $url = asset('storage/' . $path);
+
+        return response()->json([
+            'url' => $url,
+            'path' => $path,
+        ], 201);
+    }
+
+    /**
+     * 既存投稿への画像をアップロード
+     * 
+     * 画像は storage/app/public/posts/{postId} に保存されます。
+     * 返却されるURL（asset('storage/' . $path)）に直接アクセスすることで画像を取得できます。
+     * 
+     * フロントエンドでは、返却された url をそのまま <img src={url}> で使用できます。
+     * 
+     * 注意: シンボリックリンク（php artisan storage:link）が作成されている必要があります。
+     */
+    public function uploadImageToPost(Request $request, Post $post)
+    {
+        if ($res = $this->authorizePost($request)) {
+            return $res;
+        }
+
+        $user = $request->user()->load('roles');
+        if (!$this->postService->canManagePost($post, $user)) {
+            abort(403, 'この投稿に画像を追加する権限がありません。');
+        }
+
+        $validated = $request->validate([
+            'image' => 'required|file|image|max:5120', // 5MB以下
+        ]);
+
+        $file = $request->file('image');
+        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs("posts/{$post->id}", $filename, 'public');
 
         $url = asset('storage/' . $path);
 
