@@ -108,15 +108,18 @@ jobs:
             # 5. マイグレーション
             php artisan migrate --force
             
-            # 6. 最適化
+            # 6. ストレージシンボリックリンク作成（画像アップロード機能に必須）
+            php artisan storage:link || true  # 既に存在する場合はエラーを無視
+            
+            # 7. 最適化
             php artisan config:cache
             php artisan route:cache
             
-            # 7. storage と cache の権限を www-data に変更
+            # 8. storage と cache の権限を www-data に変更
             sudo chown -R www-data:www-data storage bootstrap/cache
             sudo chmod -R 775 storage bootstrap/cache
             
-            # 8. PHP-FPM リロード
+            # 9. PHP-FPM リロード
             sudo systemctl reload php8.3-fpm
             
             echo "Deployment completed successfully"
