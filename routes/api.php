@@ -40,6 +40,8 @@ Route::apiResource('book-reviews', BookReviewController::class)->only(['index', 
 // 共同編集ドキュメント（認証不要）
 Route::get('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentController::class, 'show']);
 Route::post('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentController::class, 'update']);
+Route::post('/documents/{roomId}/images', [App\Http\Controllers\Api\SharedDocumentController::class, 'uploadImage']);
+Route::delete('/documents/{roomId}/images/{filename}', [App\Http\Controllers\Api\SharedDocumentController::class, 'deleteImage']);
 
 // 認証が必要なルート、Sanctum 認証でトークンが有効な場合はルート処理、無効な場合は401エラー
 Route::middleware('auth:sanctum')->group(function () {
