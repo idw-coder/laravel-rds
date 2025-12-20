@@ -80,13 +80,14 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
+          BRANCH_NAME: ${{ github.ref_name }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
 
-          ssh $SSH_USER@$SSH_HOST << 'EOF'
+          ssh $SSH_USER@$SSH_HOST << EOF
             set -e  # エラーで停止
             
             cd /var/www/laravel
@@ -94,9 +95,9 @@ jobs:
             # 1. 所有者を ubuntu に変更（最初に実行）
             sudo chown -R ubuntu:ubuntu /var/www/laravel
             
-            # 2. ローカルの変更を破棄して強制同期
+            # 2. ローカルの変更を破棄して強制同期（現在のブランチに応じてデプロイ）
             git fetch origin
-            git reset --hard origin/main
+            git reset --hard origin/$BRANCH_NAME
             git clean -fd
             
             # 3. 依存関係インストール
