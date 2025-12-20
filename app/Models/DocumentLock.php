@@ -31,13 +31,13 @@ class DocumentLock extends Model
     }
 
     /**
-     * ロックを延長する（1.5分延長）
+     * ロックを延長する（30秒延長）
      * 
      * @return void
      */
     public function extend(): void
     {
-        $this->expires_at = now()->addSeconds(1); // 1秒
+        $this->expires_at = now()->addSeconds(30); // 30秒（リアルタイム性を重視）
         $this->save();
     }
 }

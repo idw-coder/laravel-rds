@@ -266,7 +266,7 @@ class SharedDocumentController extends Controller
             'room_id' => $roomId,
             'session_id' => $sessionId,
             'locked_at' => now(),
-            'expires_at' => now()->addSeconds(90), // 1.5分 = 90秒
+            'expires_at' => now()->addSeconds(30), // 30秒（リアルタイム性を重視）
         ]);
 
         // WebSocketで通知（全員に送信）
