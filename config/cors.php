@@ -21,9 +21,7 @@ return [
 
     // credentials: 'include'を使用する場合、具体的なオリジンを指定する必要がある（ワイルドカード '*' は使用不可）
     // 環境変数 CORS_ALLOWED_ORIGINS で指定（カンマ区切りで複数指定も可能）
-    'allowed_origins' => array_filter(
-        array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')))
-    ),
+    'allowed_origins' => env('CORS_ALLOWED_ORIGINS') ? [env('CORS_ALLOWED_ORIGINS')] : ['http://localhost:5173'],
 
     'allowed_origins_patterns' => [],
 
