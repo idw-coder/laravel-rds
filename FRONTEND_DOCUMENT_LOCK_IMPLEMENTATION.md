@@ -17,8 +17,7 @@
 ```json
 {
   "success": true,
-  "locked_at": "2024-12-19T12:00:00Z",
-  "expires_at": "2024-12-19T12:00:30Z"
+  "locked_at": "2024-12-19T12:00:00Z"
 }
 ```
 
@@ -73,8 +72,7 @@
 ```json
 {
   "is_locked": true,
-  "locked_at": "2024-12-19T12:00:00Z",
-  "expires_at": "2024-12-19T12:00:30Z"
+  "locked_at": "2024-12-19T12:00:00Z"
 }
 ```
 
@@ -84,39 +82,6 @@
   "is_locked": false
 }
 ```
-
-### 1.4 ロック更新（ハートビート）
-**エンドポイント**: `PUT /api/documents/{roomId}/lock`  
-**認証**: 不要  
-**用途**: 10秒ごとに呼び出し、ロックを延長（30秒延長）
-
-**レスポンス（成功時）**:
-```json
-{
-  "success": true,
-  "expires_at": "2024-12-19T12:00:30Z"
-}
-```
-
-**レスポンス（失敗時 - ロックが見つからない）**:
-```json
-{
-  "success": false,
-  "error": "lock_not_found",
-  "message": "ロックが見つかりません。"
-}
-```
-**HTTPステータス**: `404 Not Found`
-
-**レスポンス（失敗時 - 自分のロックでない）**:
-```json
-{
-  "success": false,
-  "error": "not_locked_by_user",
-  "message": "あなたはロックを保持していません"
-}
-```
-**HTTPステータス**: `403 Forbidden`
 
 ---
 
@@ -169,29 +134,7 @@
    if (response.ok) {
      // ロック取得成功
      // エディタを編集可能にする
-     // ハートビートを開始
    }
-   ```
-
-2. **ハートビートの開始**
-   ```typescript
-   // 10秒ごとにロックを延長
-   const heartbeatInterval = setInterval(async () => {
-     try {
-       const response = await fetch(`/api/documents/${roomId}/lock`, {
-         method: 'PUT',
-         credentials: 'include'
-       });
-       
-       if (!response.ok) {
-         // ロックが失われた場合、エディタを読み取り専用にする
-         clearInterval(heartbeatInterval);
-         // UIに「ロックが失われました」と表示
-       }
-      } catch (error) {
-        console.error('ハートビートエラー:', error);
-      }
-    }, 10000); // 10秒ごと
    ```
 
 ### 3.2 編集終了時の処理
@@ -205,9 +148,6 @@
        credentials: 'include'
      });
    });
-   
-   // ハートビートを停止
-   clearInterval(heartbeatInterval);
    ```
 
 ### 3.3 WebSocketイベントの受信
@@ -221,8 +161,6 @@ Echo.channel(`document.${roomId}`)
     if (e.session_id !== currentSessionId) {
       // UIに「他のユーザーが編集中です」と表示
       // エディタを読み取り専用にする
-      // ハートビートを停止
-      clearInterval(heartbeatInterval);
     }
   })
   .listen('.document.unlocked', (e: any) => {
@@ -268,35 +206,23 @@ Echo.channel(`document.${roomId}`)
 2. 成功した場合:
    - エディタを編集可能にする
    - 「編集中」バッジを表示
-   - ハートビートを開始（10秒ごと）
 3. 失敗した場合（409 Conflict）:
    - 「他のユーザーが編集中です」と表示
    - エディタを読み取り専用のままにする
 ```
 
-### 4.3 編集中
-```
-1. ハートビートを10秒ごとに送信（PUT /api/documents/{roomId}/lock）
-2. ハートビートが失敗した場合:
-   - ロックが失われたと判断
-   - エディタを読み取り専用にする
-   - 「ロックが失われました」と表示
-```
-
-### 4.4 編集終了時
+### 4.3 編集終了時
 ```
 1. ロックを解放（DELETE /api/documents/{roomId}/lock）
-2. ハートビートを停止
-3. 「編集中」バッジを削除
+2. 「編集中」バッジを削除
 ```
 
-### 4.5 WebSocketイベント受信時
+### 4.4 WebSocketイベント受信時
 ```
 1. document.locked イベントを受信:
    - 自分のロックでない場合:
      - エディタを読み取り専用にする
      - 「他のユーザーが編集中です」と表示
-     - ハートビートを停止
 
 2. document.unlocked イベントを受信:
    - 「編集中」表示を削除
@@ -308,8 +234,8 @@ Echo.channel(`document.${roomId}`)
 ## 5. エラーハンドリング
 
 ### 5.1 ネットワークエラー
-- ハートビートが失敗した場合、リトライロジックを実装
-- 3回連続で失敗した場合、ロックが失われたと判断
+- ロック取得/解放が失敗した場合、リトライロジックを実装
+- 3回連続で失敗した場合、エラーメッセージを表示
 
 ### 5.2 ロック競合
 - `409 Conflict`が返された場合、定期的にロック状態を確認
@@ -323,10 +249,10 @@ Echo.channel(`document.${roomId}`)
 
 ## 6. ビジネスロジックの説明
 
-### 6.1 ロックの有効期限
-- **ロック取得時**: 30秒の有効期限
-- **ハートビート**: 10秒ごとに送信し、有効期限を30秒に延長
-- **タイムアウト**: ハートビートが停止すると、最後の延長から30秒後に自動削除
+### 6.1 ロックの保持
+- **ロック取得時**: ロックを作成
+- **ロック解放**: DELETE /lockで明示的にロックを削除
+- **ロックは無期限**: フロントからDELETE /lockが来るまでロックを保持
 
 ### 6.2 セッションIDによる識別
 - 認証不要で、セッションIDでユーザーを識別
@@ -352,7 +278,6 @@ import { ref, onUnmounted } from 'vue';
 export function useDocumentLock(roomId: string) {
   const isLocked = ref(false);
   const isMyLock = ref(false);
-  const heartbeatInterval = ref<NodeJS.Timeout | null>(null);
 
   // ロック取得
   const acquireLock = async (): Promise<boolean> => {
@@ -372,7 +297,6 @@ export function useDocumentLock(roomId: string) {
       if (response.ok) {
         isLocked.value = true;
         isMyLock.value = true;
-        startHeartbeat();
         return true;
       }
 
@@ -395,39 +319,6 @@ export function useDocumentLock(roomId: string) {
     } finally {
       isLocked.value = false;
       isMyLock.value = false;
-      stopHeartbeat();
-    }
-  };
-
-  // ハートビート開始
-  const startHeartbeat = (): void => {
-    stopHeartbeat(); // 既存のハートビートを停止
-    
-    heartbeatInterval.value = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/documents/${roomId}/lock`, {
-          method: 'PUT',
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          // ロックが失われた
-          isLocked.value = false;
-          isMyLock.value = false;
-          stopHeartbeat();
-        }
-      } catch (error) {
-        console.error('ハートビートエラー:', error);
-        // 3回連続で失敗した場合、ロックが失われたと判断
-      }
-    }, 10000); // 10秒ごと
-  };
-
-  // ハートビート停止
-  const stopHeartbeat = (): void => {
-    if (heartbeatInterval.value) {
-      clearInterval(heartbeatInterval.value);
-      heartbeatInterval.value = null;
     }
   };
 
@@ -578,7 +469,7 @@ onUnmounted(() => {
 ## 8. 注意事項
 
 1. **セッションCookie**: `credentials: 'include'`を必ず指定
-2. **ハートビート**: 10秒ごとに送信（リアルタイム性を重視）
+2. **ロック解放**: ページ離脱時や編集終了時に必ずDELETE /lockを呼び出す
 3. **エラーハンドリング**: ネットワークエラー時のリトライロジックを実装
 4. **UI/UX**: ロック状態を明確に表示し、ユーザーに分かりやすくする
 5. **パフォーマンス**: ロック状態確認の頻度を適切に設定（10秒ごと推奨）
@@ -589,7 +480,7 @@ onUnmounted(() => {
 
 1. **正常系**: ロック取得 → 編集 → ロック解放
 2. **競合**: 2人のユーザーが同時にロック取得を試みる
-3. **タイムアウト**: ハートビートを停止してタイムアウトを確認
+3. **ページ離脱**: ブラウザを閉じる前にロック解放が実行されることを確認
 4. **WebSocket**: 他のユーザーがロック取得/解放した時の動作確認
 
 ---

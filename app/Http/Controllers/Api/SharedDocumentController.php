@@ -243,12 +243,10 @@ class SharedDocumentController extends Controller
     {
         $sessionId = $request->session()->getId();
 
-        // 既存のロックを確認（有効期限切れのロックは無視）
-        $existingLock = DocumentLock::where('room_id', $roomId)
-            ->where('expires_at', '>', now())
-            ->first();
+        // 既存のロックを確認
+        $existingLock = DocumentLock::where('room_id', $roomId)->first();
 
-        // 有効なロックが存在し、かつ自分のロックでない場合
+        // ロックが存在し、かつ自分のロックでない場合
         if ($existingLock && $existingLock->session_id !== $sessionId) {
             return response()->json([
                 'success' => false,
@@ -266,7 +264,7 @@ class SharedDocumentController extends Controller
             'room_id' => $roomId,
             'session_id' => $sessionId,
             'locked_at' => now(),
-            'expires_at' => now()->addSeconds(30), // 30秒（リアルタイム性を重視）
+            'expires_at' => '2038-01-19 03:14:07', // MySQLのTIMESTAMP最大値（実質的に無期限、DELETE /lockで明示的に削除）
         ]);
 
         // WebSocketで通知（全員に送信）
@@ -285,7 +283,6 @@ class SharedDocumentController extends Controller
         return response()->json([
             'success' => true,
             'locked_at' => $lock->locked_at->toIso8601String(),
-            'expires_at' => $lock->expires_at->toIso8601String(),
         ], 200);
     }
 
@@ -348,9 +345,7 @@ class SharedDocumentController extends Controller
      */
     public function getLockStatus(string $roomId)
     {
-        $lock = DocumentLock::where('room_id', $roomId)
-            ->where('expires_at', '>', now())
-            ->first();
+        $lock = DocumentLock::where('room_id', $roomId)->first();
 
         if (!$lock) {
             return response()->json([
@@ -361,46 +356,7 @@ class SharedDocumentController extends Controller
         return response()->json([
             'is_locked' => true,
             'locked_at' => $lock->locked_at->toIso8601String(),
-            'expires_at' => $lock->expires_at->toIso8601String(),
         ], 200);
     }
 
-    /**
-     * ロック更新（ハートビート）
-     * PUT /api/documents/{roomId}/lock
-     * 
-     * 認証: 不要（セッションIDで識別）
-     */
-    public function updateLock(Request $request, string $roomId)
-    {
-        $sessionId = $request->session()->getId();
-
-        $lock = DocumentLock::where('room_id', $roomId)->first();
-
-        // ロックが存在しない場合
-        if (!$lock) {
-            return response()->json([
-                'success' => false,
-                'error' => 'lock_not_found',
-                'message' => 'ロックが見つかりません。',
-            ], 404);
-        }
-
-        // 自分のロックでない場合
-        if ($lock->session_id !== $sessionId) {
-            return response()->json([
-                'success' => false,
-                'error' => 'not_locked_by_user',
-                'message' => 'あなたはロックを保持していません',
-            ], 403);
-        }
-
-        // ロックを延長（1秒延長）
-        $lock->extend();
-
-        return response()->json([
-            'success' => true,
-            'expires_at' => $lock->expires_at->toIso8601String(),
-        ], 200);
-    }
 }
