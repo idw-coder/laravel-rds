@@ -43,6 +43,12 @@ Route::post('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentContr
 Route::post('/documents/{roomId}/images', [App\Http\Controllers\Api\SharedDocumentController::class, 'uploadImage']);
 Route::delete('/documents/{roomId}/images/{filename}', [App\Http\Controllers\Api\SharedDocumentController::class, 'deleteImage']);
 
+// ドキュメントロック関連（認証不要：セッションIDで識別）
+Route::get('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'getLockStatus']);
+Route::post('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'lock']);
+Route::delete('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'unlock']);
+Route::put('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'updateLock']);
+
 // 認証が必要なルート、Sanctum 認証でトークンが有効な場合はルート処理、無効な場合は401エラー
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {

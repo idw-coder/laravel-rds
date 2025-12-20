@@ -22,6 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
+        
+        // APIルートでセッションを使用するため、StartSessionミドルウェアを追加
+        // （ロック機能でセッションIDを使用するため）
+        $middleware->api(prepend: [
+            \Illuminate\Session\Middleware\StartSession::class,
+        ]);
 
         // Sanctumの権限チェックミドルウェアを追加
         // CheckAbilities: リクエストされた全ての権限（abilities）がトークンに含まれているかチェック

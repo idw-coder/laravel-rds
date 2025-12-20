@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\DocumentLocked;
+use App\Events\DocumentUnlocked;
 use App\Events\SharedDocumentUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\DocumentLock;
 use App\Models\SharedDocument;
 use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Http\Request;
@@ -52,7 +55,7 @@ class SharedDocumentController extends Controller
                 $this->deleteUnusedImages($document->id, $oldContent, $newContent);
             } catch (\Exception $e) {
                 // 画像削除でエラーが発生してもドキュメント保存は続行
-                \Log::error('Failed to delete unused images: ' . $e->getMessage());
+                Log::error('Failed to delete unused images: ' . $e->getMessage());
             }
         }
 
@@ -228,5 +231,176 @@ class SharedDocumentController extends Controller
         
         // ファイルを削除
         return Storage::disk('public')->delete($filePath);
+    }
+
+    /**
+     * ロック取得
+     * POST /api/documents/{roomId}/lock
+     * 
+     * 認証: 不要（セッションIDで識別）
+     */
+    public function lock(Request $request, string $roomId)
+    {
+        $sessionId = $request->session()->getId();
+
+        // 既存のロックを確認（有効期限切れのロックは無視）
+        $existingLock = DocumentLock::where('room_id', $roomId)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        // 有効なロックが存在し、かつ自分のロックでない場合
+        if ($existingLock && $existingLock->session_id !== $sessionId) {
+            return response()->json([
+                'success' => false,
+                'error' => 'already_locked',
+                'message' => '他のユーザーが編集中です',
+                'locked_at' => $existingLock->locked_at->toIso8601String(),
+            ], 409);
+        }
+
+        // 既存のロックを削除（自分のロックの場合も更新）
+        DocumentLock::where('room_id', $roomId)->delete();
+
+        // 新しいロックを作成
+        $lock = DocumentLock::create([
+            'room_id' => $roomId,
+            'session_id' => $sessionId,
+            'locked_at' => now(),
+            'expires_at' => now()->addSeconds(90), // 1.5分 = 90秒
+        ]);
+
+        // WebSocketで通知（全員に送信）
+        if (config('broadcasting.default') !== 'null') {
+            try {
+                $event = new DocumentLocked($roomId, $sessionId);
+                $pendingBroadcast = broadcast($event);
+                unset($pendingBroadcast);
+            } catch (BroadcastException $e) {
+                Log::error('Failed to broadcast document lock: ' . $e->getMessage());
+            } catch (\Exception $e) {
+                Log::error('Failed to broadcast document lock: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'locked_at' => $lock->locked_at->toIso8601String(),
+            'expires_at' => $lock->expires_at->toIso8601String(),
+        ], 200);
+    }
+
+    /**
+     * ロック解放
+     * DELETE /api/documents/{roomId}/lock
+     * 
+     * 認証: 不要（セッションIDで識別）
+     */
+    public function unlock(Request $request, string $roomId)
+    {
+        $sessionId = $request->session()->getId();
+
+        $lock = DocumentLock::where('room_id', $roomId)->first();
+
+        // ロックが存在しない場合
+        if (!$lock) {
+            return response()->json([
+                'success' => true,
+                'message' => 'ロックは既に解放されています。',
+            ], 200);
+        }
+
+        // 自分のロックでない場合
+        if ($lock->session_id !== $sessionId) {
+            return response()->json([
+                'success' => false,
+                'error' => 'not_locked_by_user',
+                'message' => 'あなたはロックを保持していません',
+            ], 403);
+        }
+
+        // ロックを削除
+        $lock->delete();
+
+        // WebSocketで通知
+        if (config('broadcasting.default') !== 'null') {
+            try {
+                $event = new DocumentUnlocked($roomId, $sessionId);
+                $pendingBroadcast = broadcast($event);
+                unset($pendingBroadcast);
+            } catch (BroadcastException $e) {
+                Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
+            } catch (\Exception $e) {
+                Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'ロックを解放しました。',
+        ], 200);
+    }
+
+    /**
+     * ロック状態確認
+     * GET /api/documents/{roomId}/lock
+     * 
+     * 認証: 不要
+     */
+    public function getLockStatus(string $roomId)
+    {
+        $lock = DocumentLock::where('room_id', $roomId)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$lock) {
+            return response()->json([
+                'is_locked' => false,
+            ], 200);
+        }
+
+        return response()->json([
+            'is_locked' => true,
+            'locked_at' => $lock->locked_at->toIso8601String(),
+            'expires_at' => $lock->expires_at->toIso8601String(),
+        ], 200);
+    }
+
+    /**
+     * ロック更新（ハートビート）
+     * PUT /api/documents/{roomId}/lock
+     * 
+     * 認証: 不要（セッションIDで識別）
+     */
+    public function updateLock(Request $request, string $roomId)
+    {
+        $sessionId = $request->session()->getId();
+
+        $lock = DocumentLock::where('room_id', $roomId)->first();
+
+        // ロックが存在しない場合
+        if (!$lock) {
+            return response()->json([
+                'success' => false,
+                'error' => 'lock_not_found',
+                'message' => 'ロックが見つかりません。',
+            ], 404);
+        }
+
+        // 自分のロックでない場合
+        if ($lock->session_id !== $sessionId) {
+            return response()->json([
+                'success' => false,
+                'error' => 'not_locked_by_user',
+                'message' => 'あなたはロックを保持していません',
+            ], 403);
+        }
+
+        // ロックを延長（1秒延長）
+        $lock->extend();
+
+        return response()->json([
+            'success' => true,
+            'expires_at' => $lock->expires_at->toIso8601String(),
+        ], 200);
     }
 }
