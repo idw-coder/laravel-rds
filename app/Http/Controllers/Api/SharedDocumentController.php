@@ -10,6 +10,7 @@ use App\Models\DocumentLock;
 use App\Models\SharedDocument;
 use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -34,6 +35,8 @@ class SharedDocumentController extends Controller
     /**
      * ドキュメント保存
      * 保存後、WebSocketで他のユーザーに通知
+     * 
+     * 注意: ロック確認はフロントエンドで行う（バックエンドではロック確認なし）
      */
     public function update(Request $request, string $roomId)
     {
@@ -243,47 +246,52 @@ class SharedDocumentController extends Controller
     {
         $sessionId = $request->session()->getId();
 
-        // 既存のロックを確認
-        $existingLock = DocumentLock::where('room_id', $roomId)->first();
+        // トランザクション内で行ロックを取得してアトミックに処理（レースコンディション対策）
+        return DB::transaction(function () use ($roomId, $sessionId) {
+            // 行ロックを取得（他のトランザクションからの更新をブロック）
+            $existingLock = DocumentLock::where('room_id', $roomId)
+                ->lockForUpdate()
+                ->first();
 
-        // ロックが存在し、かつ自分のロックでない場合
-        if ($existingLock && $existingLock->session_id !== $sessionId) {
-            return response()->json([
-                'success' => false,
-                'error' => 'already_locked',
-                'message' => '他のユーザーが編集中です',
-                'locked_at' => $existingLock->locked_at->toIso8601String(),
-            ], 409);
-        }
-
-        // 既存のロックを削除（自分のロックの場合も更新）
-        DocumentLock::where('room_id', $roomId)->delete();
-
-        // 新しいロックを作成
-        $lock = DocumentLock::create([
-            'room_id' => $roomId,
-            'session_id' => $sessionId,
-            'locked_at' => now(),
-            'expires_at' => '2038-01-19 03:14:07', // MySQLのTIMESTAMP最大値（実質的に無期限、DELETE /lockで明示的に削除）
-        ]);
-
-        // WebSocketで通知（全員に送信）
-        if (config('broadcasting.default') !== 'null') {
-            try {
-                $event = new DocumentLocked($roomId, $sessionId);
-                $pendingBroadcast = broadcast($event);
-                unset($pendingBroadcast);
-            } catch (BroadcastException $e) {
-                Log::error('Failed to broadcast document lock: ' . $e->getMessage());
-            } catch (\Exception $e) {
-                Log::error('Failed to broadcast document lock: ' . $e->getMessage());
+            // ロックが存在し、かつ自分のロックでない場合
+            if ($existingLock && $existingLock->session_id !== $sessionId) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'already_locked',
+                    'message' => '他のユーザーが編集中です',
+                    'locked_at' => $existingLock->locked_at->toIso8601String(),
+                ], 409);
             }
-        }
 
-        return response()->json([
-            'success' => true,
-            'locked_at' => $lock->locked_at->toIso8601String(),
-        ], 200);
+            // 既存のロックを削除（自分のロックの場合も更新）
+            DocumentLock::where('room_id', $roomId)->delete();
+
+            // 新しいロックを作成
+            $lock = DocumentLock::create([
+                'room_id' => $roomId,
+                'session_id' => $sessionId,
+                'locked_at' => now(),
+                'expires_at' => '2038-01-19 03:14:07', // MySQLのTIMESTAMP最大値（実質的に無期限、DELETE /lockで明示的に削除）
+            ]);
+
+            // WebSocketで通知（全員に送信）
+            if (config('broadcasting.default') !== 'null') {
+                try {
+                    $event = new DocumentLocked($roomId, $sessionId);
+                    $pendingBroadcast = broadcast($event);
+                    unset($pendingBroadcast);
+                } catch (BroadcastException $e) {
+                    Log::error('Failed to broadcast document lock: ' . $e->getMessage());
+                } catch (\Exception $e) {
+                    Log::error('Failed to broadcast document lock: ' . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'locked_at' => $lock->locked_at->toIso8601String(),
+            ], 200);
+        });
     }
 
     /**
@@ -296,45 +304,50 @@ class SharedDocumentController extends Controller
     {
         $sessionId = $request->session()->getId();
 
-        $lock = DocumentLock::where('room_id', $roomId)->first();
+        // トランザクション内で行ロックを取得してアトミックに処理
+        return DB::transaction(function () use ($roomId, $sessionId) {
+            $lock = DocumentLock::where('room_id', $roomId)
+                ->lockForUpdate()
+                ->first();
 
-        // ロックが存在しない場合
-        if (!$lock) {
+            // ロックが存在しない場合
+            if (!$lock) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'ロックは既に解放されています。',
+                ], 200);
+            }
+
+            // 自分のロックでない場合
+            if ($lock->session_id !== $sessionId) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'not_locked_by_user',
+                    'message' => 'あなたはロックを保持していません',
+                ], 403);
+            }
+
+            // ロックを削除
+            $lock->delete();
+
+            // WebSocketで通知
+            if (config('broadcasting.default') !== 'null') {
+                try {
+                    $event = new DocumentUnlocked($roomId, $sessionId);
+                    $pendingBroadcast = broadcast($event);
+                    unset($pendingBroadcast);
+                } catch (BroadcastException $e) {
+                    Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
+                } catch (\Exception $e) {
+                    Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
+                }
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'ロックは既に解放されています。',
+                'message' => 'ロックを解放しました。',
             ], 200);
-        }
-
-        // 自分のロックでない場合
-        if ($lock->session_id !== $sessionId) {
-            return response()->json([
-                'success' => false,
-                'error' => 'not_locked_by_user',
-                'message' => 'あなたはロックを保持していません',
-            ], 403);
-        }
-
-        // ロックを削除
-        $lock->delete();
-
-        // WebSocketで通知
-        if (config('broadcasting.default') !== 'null') {
-            try {
-                $event = new DocumentUnlocked($roomId, $sessionId);
-                $pendingBroadcast = broadcast($event);
-                unset($pendingBroadcast);
-            } catch (BroadcastException $e) {
-                Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
-            } catch (\Exception $e) {
-                Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'ロックを解放しました。',
-        ], 200);
+        });
     }
 
     /**
@@ -343,18 +356,21 @@ class SharedDocumentController extends Controller
      * 
      * 認証: 不要
      */
-    public function getLockStatus(string $roomId)
+    public function getLockStatus(Request $request, string $roomId)
     {
+        $sessionId = $request->session()->getId();
         $lock = DocumentLock::where('room_id', $roomId)->first();
 
         if (!$lock) {
             return response()->json([
                 'is_locked' => false,
+                'is_my_lock' => false,
             ], 200);
         }
 
         return response()->json([
             'is_locked' => true,
+            'is_my_lock' => $lock->session_id === $sessionId,
             'locked_at' => $lock->locked_at->toIso8601String(),
         ], 200);
     }
