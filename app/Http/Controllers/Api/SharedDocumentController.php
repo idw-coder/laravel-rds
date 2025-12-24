@@ -16,14 +16,18 @@ use Illuminate\Support\Facades\Storage;
 
 class SharedDocumentController extends Controller
 {
+    // ============================================
+    // ドキュメント操作
+    // ============================================
+
     /**
      * ドキュメント取得（なければ新規作成）
      */
     public function show(string $roomId)
     {
         $document = SharedDocument::firstOrCreate(
-            ['room_id' => $roomId],
-            ['content' => '']
+            ['room_id' => $roomId], // 第一引数のroom_idで検索、見つかればそれを使用
+            ['content' => '']       // 見つからなければ第二引数の内容を使用
         );
 
         return response()->json([
@@ -34,7 +38,6 @@ class SharedDocumentController extends Controller
 
     /**
      * ドキュメント保存
-     * 保存後、WebSocketで他のユーザーに通知
      * 
      * 注意: ロック確認はフロントエンドで行う（バックエンドではロック確認なし）
      */
@@ -52,36 +55,15 @@ class SharedDocumentController extends Controller
         $oldContent = $document->content ?? '';
         $newContent = $request->input('content', '');
 
-        // contentが更新される場合、削除された画像ファイルを削除
+        // 削除された画像ファイルをクリーンアップ
         if ($newContent !== $oldContent && $document->id) {
-            try {
-                $this->deleteUnusedImages($document->id, $oldContent, $newContent);
-            } catch (\Exception $e) {
-                // 画像削除でエラーが発生してもドキュメント保存は続行
-                Log::error('Failed to delete unused images: ' . $e->getMessage());
-            }
+            $this->cleanupDeletedImages($document->id, $oldContent, $newContent);
         }
 
         $document->content = $newContent;
         $document->save();
 
-        // WebSocketでブロードキャスト
-        // 同じルームの他のユーザーにリアルタイムで通知
-        // ブロードキャスト設定が有効な場合のみ実行
-        if (config('broadcasting.default') !== 'null') {
-            try {
-                $event = new SharedDocumentUpdated($roomId, $document->content);
-                $pendingBroadcast = broadcast($event);
-                // 変数を保持することで、try-catchのスコープ内で__destruct()が呼ばれる
-                unset($pendingBroadcast);
-            } catch (BroadcastException $e) {
-                // BroadcastExceptionを明示的にキャッチ
-                Log::error('Failed to broadcast document update: ' . $e->getMessage());
-            } catch (\Exception $e) {
-                // その他の例外もキャッチ
-                Log::error('Failed to broadcast document update: ' . $e->getMessage());
-            }
-        }
+        $this->broadcast(new SharedDocumentUpdated($roomId, $document->content));
 
         return response()->json([
             'room_id' => $document->room_id,
@@ -89,16 +71,15 @@ class SharedDocumentController extends Controller
         ]);
     }
 
+    // ============================================
+    // 画像操作
+    // ============================================
+
     /**
-     * 共有ドキュメント用画像をアップロード
+     * 画像アップロード
      * 
-     * 画像は storage/app/public/shared-documents/{documentId} に保存されます。
-     * 返却されるURL（asset('storage/' . $path)）に直接アクセスすることで画像を取得できます。
-     * そのため、画像取得用のAPIエンドポイントは不要です。
-     * 
-     * フロントエンドでは、返却された url をそのまま <img src={url}> で使用できます。
-     * 
-     * 注意: シンボリックリンク（php artisan storage:link）が作成されている必要があります。
+     * 保存先: storage/app/public/shared-documents/{documentId}/
+     * アクセス: asset('storage/' . $path) でURL取得
      */
     public function uploadImage(Request $request, string $roomId)
     {
@@ -115,145 +96,48 @@ class SharedDocumentController extends Controller
         $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs("shared-documents/{$document->id}", $filename, 'public');
 
-        $url = asset('storage/' . $path);
-
         return response()->json([
-            'url' => $url,
+            'url' => asset('storage/' . $path),
             'path' => $path,
         ], 201);
     }
 
     /**
-     * 共有ドキュメントの画像を削除
-     * 
-     * 画像ファイルを削除します。
-     * 他のドキュメントで使われている画像は削除されません。
+     * 画像削除
      */
     public function deleteImage(Request $request, string $roomId, string $filename)
     {
         $document = SharedDocument::where('room_id', $roomId)->firstOrFail();
-        
-        $deleted = $this->deleteImageFile($document->id, $filename);
-        
-        if (!$deleted) {
+
+        if (!$this->deleteImageFile($document->id, $filename)) {
             return response()->json([
                 'message' => '画像の削除に失敗しました。ファイルが存在しないか、他のドキュメントで使用されています。',
             ], 404);
         }
 
-        return response()->json([
-            'message' => '画像を削除しました。',
-        ], 200);
+        return response()->json(['message' => '画像を削除しました。']);
     }
 
-    /**
-     * contentから削除された画像ファイルを削除
-     *
-     * @param int $documentId
-     * @param string $oldContent
-     * @param string $newContent
-     * @return void
-     */
-    private function deleteUnusedImages(int $documentId, string $oldContent, string $newContent): void
-    {
-        // 古いcontentから画像URLを抽出
-        $oldImageUrls = $this->extractImageUrls($oldContent);
-        
-        // 新しいcontentから画像URLを抽出
-        $newImageUrls = $this->extractImageUrls($newContent);
-        
-        // 削除された画像URLを特定
-        $deletedUrls = array_diff($oldImageUrls, $newImageUrls);
-        
-        // 削除された画像ファイルを削除
-        foreach ($deletedUrls as $url) {
-            // 共有ドキュメントフォルダ（shared-documents/{documentId}/）内の画像のみを対象
-            if (preg_match('/\/storage\/shared-documents\/' . preg_quote($documentId, '/') . '\/([^\/]+)$/', $url, $fileMatch)) {
-                $filename = $fileMatch[1];
-                $filePath = "shared-documents/{$documentId}/{$filename}";
-                
-                // ファイルが存在し、他のドキュメントで使われていない場合のみ削除
-                if (Storage::disk('public')->exists($filePath)) {
-                    // 他のドキュメントで使われているかチェック
-                    $isUsedInOtherDocuments = SharedDocument::where('id', '!=', $documentId)
-                        ->where('content', 'like', '%' . $filename . '%')
-                        ->exists();
-                    
-                    if (!$isUsedInOtherDocuments) {
-                        Storage::disk('public')->delete($filePath);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * contentから画像URLを抽出
-     *
-     * @param string $content
-     * @return array
-     */
-    private function extractImageUrls(string $content): array
-    {
-        $urls = [];
-        // Markdown形式の画像URLを抽出: ![alt](url)
-        preg_match_all('/!\[.*?\]\((.*?)\)/', $content, $matches);
-        
-        foreach ($matches[1] as $url) {
-            $urls[] = $url;
-        }
-        
-        return $urls;
-    }
-
-    /**
-     * 画像ファイルを削除
-     *
-     * @param int $documentId
-     * @param string $filename
-     * @return bool
-     */
-    private function deleteImageFile(int $documentId, string $filename): bool
-    {
-        $filePath = "shared-documents/{$documentId}/{$filename}";
-        
-        // ファイルが存在しない場合はfalseを返す
-        if (!Storage::disk('public')->exists($filePath)) {
-            return false;
-        }
-        
-        // 他のドキュメントで使われているかチェック
-        $isUsedInOtherDocuments = SharedDocument::where('id', '!=', $documentId)
-            ->where('content', 'like', '%' . $filename . '%')
-            ->exists();
-        
-        // 他のドキュメントで使われている場合は削除しない
-        if ($isUsedInOtherDocuments) {
-            return false;
-        }
-        
-        // ファイルを削除
-        return Storage::disk('public')->delete($filePath);
-    }
+    // ============================================
+    // ロック操作
+    // ============================================
 
     /**
      * ロック取得
-     * POST /api/documents/{roomId}/lock
      * 
-     * 認証: 不要（セッションIDで識別）
+     * トランザクション + 行ロックでレースコンディション対策
      */
     public function lock(Request $request, string $roomId)
     {
         $sessionId = $request->session()->getId();
 
-        // トランザクション内で行ロックを取得してアトミックに処理（レースコンディション対策）
         return DB::transaction(function () use ($roomId, $sessionId) {
-            // 行ロックを取得（他のトランザクションからの更新をブロック）
+            // lockForUpdate(): SELECT ... FOR UPDATE を発行し、トランザクション終了まで行をロック
             $existingLock = DocumentLock::where('room_id', $roomId)
                 ->lockForUpdate()
                 ->first();
 
-            // ロックが存在し、かつ自分のロックでない場合
+            // 他のユーザーがロック中
             if ($existingLock && $existingLock->session_id !== $sessionId) {
                 return response()->json([
                     'success' => false,
@@ -263,62 +147,44 @@ class SharedDocumentController extends Controller
                 ], 409);
             }
 
-            // 既存のロックを削除（自分のロックの場合も更新）
+            // ロックを更新（既存があれば削除して再作成）
             DocumentLock::where('room_id', $roomId)->delete();
-
-            // 新しいロックを作成
             $lock = DocumentLock::create([
                 'room_id' => $roomId,
                 'session_id' => $sessionId,
                 'locked_at' => now(),
-                'expires_at' => '2038-01-19 03:14:07', // MySQLのTIMESTAMP最大値（実質的に無期限、DELETE /lockで明示的に削除）
+                'expires_at' => '2038-01-19 03:14:07', // 実質無期限（DELETE /lockで明示的に削除）
             ]);
 
-            // WebSocketで通知（全員に送信）
-            if (config('broadcasting.default') !== 'null') {
-                try {
-                    $event = new DocumentLocked($roomId, $sessionId);
-                    $pendingBroadcast = broadcast($event);
-                    unset($pendingBroadcast);
-                } catch (BroadcastException $e) {
-                    Log::error('Failed to broadcast document lock: ' . $e->getMessage());
-                } catch (\Exception $e) {
-                    Log::error('Failed to broadcast document lock: ' . $e->getMessage());
-                }
-            }
+            $this->broadcast(new DocumentLocked($roomId, $sessionId));
 
             return response()->json([
                 'success' => true,
                 'locked_at' => $lock->locked_at->toIso8601String(),
-            ], 200);
+            ]);
         });
     }
 
     /**
      * ロック解放
-     * DELETE /api/documents/{roomId}/lock
-     * 
-     * 認証: 不要（セッションIDで識別）
      */
     public function unlock(Request $request, string $roomId)
     {
         $sessionId = $request->session()->getId();
 
-        // トランザクション内で行ロックを取得してアトミックに処理
         return DB::transaction(function () use ($roomId, $sessionId) {
             $lock = DocumentLock::where('room_id', $roomId)
+            // lockForUpdate(): SELECT ... FOR UPDATE を発行し、トランザクション終了まで行をロック
                 ->lockForUpdate()
                 ->first();
 
-            // ロックが存在しない場合
             if (!$lock) {
                 return response()->json([
                     'success' => true,
                     'message' => 'ロックは既に解放されています。',
-                ], 200);
+                ]);
             }
 
-            // 自分のロックでない場合
             if ($lock->session_id !== $sessionId) {
                 return response()->json([
                     'success' => false,
@@ -327,52 +193,105 @@ class SharedDocumentController extends Controller
                 ], 403);
             }
 
-            // ロックを削除
             $lock->delete();
-
-            // WebSocketで通知
-            if (config('broadcasting.default') !== 'null') {
-                try {
-                    $event = new DocumentUnlocked($roomId, $sessionId);
-                    $pendingBroadcast = broadcast($event);
-                    unset($pendingBroadcast);
-                } catch (BroadcastException $e) {
-                    Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
-                } catch (\Exception $e) {
-                    Log::error('Failed to broadcast document unlock: ' . $e->getMessage());
-                }
-            }
+            $this->broadcast(new DocumentUnlocked($roomId, $sessionId));
 
             return response()->json([
                 'success' => true,
                 'message' => 'ロックを解放しました。',
-            ], 200);
+            ]);
         });
     }
 
     /**
      * ロック状態確認
-     * GET /api/documents/{roomId}/lock
-     * 
-     * 認証: 不要
      */
     public function getLockStatus(Request $request, string $roomId)
     {
         $sessionId = $request->session()->getId();
         $lock = DocumentLock::where('room_id', $roomId)->first();
 
-        if (!$lock) {
-            return response()->json([
-                'is_locked' => false,
-                'is_my_lock' => false,
-            ], 200);
-        }
-
         return response()->json([
-            'is_locked' => true,
-            'is_my_lock' => $lock->session_id === $sessionId,
-            'locked_at' => $lock->locked_at->toIso8601String(),
-        ], 200);
+            'is_locked' => (bool) $lock,
+            'is_my_lock' => $lock && $lock->session_id === $sessionId,
+            'locked_at' => $lock?->locked_at->toIso8601String(),
+        ]);
     }
 
+    // ============================================
+    // プライベートメソッド
+    // ============================================
+
+    /**
+     * WebSocketブロードキャスト（共通処理）
+     */
+    private function broadcast($event): void
+    {
+        if (config('broadcasting.default') === 'null') {
+            return;
+        }
+
+        try {
+            $pendingBroadcast = broadcast($event);
+            unset($pendingBroadcast);
+        } catch (BroadcastException $e) {
+            Log::error('Broadcast failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Broadcast failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 削除された画像をクリーンアップ
+     */
+    private function cleanupDeletedImages(int $documentId, string $oldContent, string $newContent): void
+    {
+        try {
+            $oldUrls = $this->extractImageUrls($oldContent);
+            $newUrls = $this->extractImageUrls($newContent);
+            $deletedUrls = array_diff($oldUrls, $newUrls);
+
+            foreach ($deletedUrls as $url) {
+                if (preg_match('/\/storage\/shared-documents\/' . preg_quote($documentId, '/') . '\/([^\/]+)$/', $url, $match)) {
+                    $this->deleteImageFile($documentId, $match[1]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to cleanup images: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * コンテンツから画像URLを抽出
+     */
+    private function extractImageUrls(string $content): array
+    {
+        preg_match_all('/!\[.*?\]\((.*?)\)/', $content, $matches);
+        return $matches[1];
+    }
+
+    /**
+     * 画像ファイルを削除
+     */
+    private function deleteImageFile(int $documentId, string $filename): bool
+    {
+        $filePath = "shared-documents/{$documentId}/{$filename}";
+
+        if (!Storage::disk('public')->exists($filePath)) {
+            return false;
+        }
+
+        // 他のドキュメントで使用中かチェック
+        // ※ユーザーが意図的に画像URLをコピペして別ドキュメントに貼り付けた場合に発生し得る
+        // ※通常のフローでは各ドキュメントは専用フォルダに画像を保存するため起こりにくい
+        // $isUsedElsewhere = SharedDocument::where('id', '!=', $documentId)
+        //     ->where('content', 'like', '%' . $filename . '%')
+        //     ->exists();
+
+        // if ($isUsedElsewhere) {
+        //     return false;
+        // }
+
+        return Storage::disk('public')->delete($filePath);
+    }
 }
