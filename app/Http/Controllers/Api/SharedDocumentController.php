@@ -160,6 +160,7 @@ class SharedDocumentController extends Controller
 
             return response()->json([
                 'success' => true,
+                'session_id' => $sessionId,
                 'locked_at' => $lock->locked_at->toIso8601String(),
             ]);
         });
