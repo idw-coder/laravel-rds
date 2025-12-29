@@ -14,36 +14,28 @@ Route::get('/test', function () {
     return response()->json(['message' => 'API is working']);
 });
 
-// ログイン
+// Sanctum認証
 Route::post('/login', [AuthController::class, 'login'])->name('login');
-
-// ユーザー登録
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 
-// Google OAuth（認証不要）
+// Google OAuth
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 
-// アバター画像取得（認証不要
+// アバター画像取得
 Route::get('/avatar/{userId}', [UserController::class, 'getAvatar']);
     
-/**
- * 投稿リソース（RESTful API）
- * apiResource: RESTful APIのルートを自動生成（GET /posts, GET /posts/{id}, POST /posts, PUT /posts/{id}, DELETE /posts/{id}）
- * 認証不要: 一覧・詳細取得のみ
- */
+// 投稿
 Route::apiResource('posts', PostController::class)->only(['index', 'show']);
 
-// 書籍レビュー（認証不要：一覧・詳細）
+// 書籍レビュー
 Route::apiResource('book-reviews', BookReviewController::class)->only(['index', 'show']);
 
-// 共同編集ドキュメント（認証不要）
+// 共同編集ドキュメント
 Route::get('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentController::class, 'show']);
 Route::post('/documents/{roomId}', [App\Http\Controllers\Api\SharedDocumentController::class, 'update']);
 Route::post('/documents/{roomId}/images', [App\Http\Controllers\Api\SharedDocumentController::class, 'uploadImage']);
 Route::delete('/documents/{roomId}/images/{filename}', [App\Http\Controllers\Api\SharedDocumentController::class, 'deleteImage']);
-
-// ドキュメントロック関連（認証不要：セッションIDで識別）
 Route::get('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'getLockStatus']);
 Route::post('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'lock']);
 Route::delete('/documents/{roomId}/lock', [App\Http\Controllers\Api\SharedDocumentController::class, 'unlock']);
@@ -60,22 +52,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile', [UserController::class, 'update']);
 
     Route::apiResource('posts', PostController::class)->only(['store', 'update', 'destroy']);
-    
-    // 投稿用画像アップロード（新規作成時用：一時フォルダ）
     Route::post('/posts/images', [PostController::class, 'uploadImage']);
-    
-    // 既存投稿への画像アップロード
     Route::post('/posts/{post}/images', [PostController::class, 'uploadImageToPost']);
-    
-    // 投稿の画像削除
     Route::delete('/posts/{post}/images/{filename}', [PostController::class, 'deleteImage']);
 
-    // 書籍レビュー（認証不要：作成・更新・削除）
+    // 書籍レビュー
     Route::apiResource('book-reviews', BookReviewController::class)->only(['store', 'update', 'destroy']);
 });
 
 /**
- * 管理者専用ルート（認証 + adminロール必須）
+ * 管理者専用ルート
  */
 Route::middleware(['auth:sanctum', 'admin'])
     ->prefix('admin') // グループ内のすべてのルートに '/admin' プレフィックスを追加
